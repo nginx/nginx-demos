@@ -1,0 +1,212 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: nginx-api-steering
+  labels:
+    app: backend
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: registry.k8s.ie.ff.lan:31005/nginx-api-steering:backend
+        ports:
+        - name: http
+          containerPort: 5000
+        volumeMounts:
+        - name: backend-db-volume
+          mountPath: /app/db.json
+          subPath: db.json
+      volumes:
+      - name: backend-db-volume
+        configMap:
+          name: backend-db
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server-1
+  namespace: nginx-api-steering
+  labels:
+    app: api-server-1
+spec:
+  selector:
+    matchLabels:
+      app: api-server-1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: api-server-1
+    spec:
+      containers:
+      - name: api-server-1
+        image: registry.k8s.ie.ff.lan:31005/nginx-api-steering:api-server
+        ports:
+        - name: http
+          containerPort: 5000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server-2
+  namespace: nginx-api-steering
+  labels:
+    app: api-server-2
+spec:
+  selector:
+    matchLabels:
+      app: api-server-2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: api-server-2
+    spec:
+      containers:
+      - name: api-server-2
+        image: registry.k8s.ie.ff.lan:31005/nginx-api-steering:api-server
+        ports:
+        - name: http
+          containerPort: 5000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: nginx-api-steering
+  labels:
+    app: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: backend
+        image: registry.k8s.ie.ff.lan:31005/nginx-api-steering:nginx-api-steering
+        ports:
+        - name: http
+          containerPort: 80
+        volumeMounts:
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d/api.conf
+          subPath: api.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d/steering.js
+          subPath: steering.js
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d/steering.conf
+          subPath: steering.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: nginx-conf-volume
+        configMap:
+          name: nginx-conf
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: nginx-api-steering
+  labels:
+    app: backend
+spec:
+  ports:
+  - name: http
+    port: 5000
+  selector:
+    app: backend
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server-1
+  namespace: nginx-api-steering
+  labels:
+    app: api-server-1
+spec:
+  ports:
+  - name: http
+    port: 5000
+  selector:
+    app: api-server-1
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server-2
+  namespace: nginx-api-steering
+  labels:
+    app: api-server-2
+spec:
+  ports:
+  - name: http
+    port: 5000
+  selector:
+    app: api-server-2
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: nginx-api-steering
+  labels:
+    app: nginx
+spec:
+  ports:
+  - name: http
+    port: 80
+  selector:
+    app: nginx
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-api-steering
+  namespace: nginx-api-steering
+  labels:
+    app: nginx-api-steering
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nginx-api-steering.k8s.f5.ff.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx
+                port:
+                  number: 80

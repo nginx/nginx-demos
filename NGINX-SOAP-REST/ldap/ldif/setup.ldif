@@ -1,0 +1,20 @@
+dn: ou=users,dc=example,dc=org
+objectClass: organizationalUnit
+ou: users
+
+dn: uid=alice,ou=users,dc=example,dc=org
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: alice
+uid: alice
+uidNumber: 16861
+gidNumber: 100
+homeDirectory: /home/alice
+loginShell: /bin/bash
+gecos: alice
+userPassword: testpassword
+shadowLastChange: 0
+shadowMax: 0
+shadowWarning: 0

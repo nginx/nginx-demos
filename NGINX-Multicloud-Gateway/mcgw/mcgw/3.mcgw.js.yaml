@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcgw-js
+  namespace: nginx-mcgw
+data:
+  mcgw.js: |-
+    export default {dbQuery};
+
+    function dbQuery(r) {
+      var dbBucket="mcgw";
+
+      var rHost=r.headersIn['host'];
+      var rUri=r.uri;
+
+      r.warn('------------------------------');
+      r.warn('Client['+r.remoteAddress+'] Method['+r.method+'] Host['+rHost+'] URI['+rUri+'] QueryString['+r.variables.query_string+'] Body['+r.requestText+']');
+
+      // Queries the backend db
+      r.subrequest('/dbQuery/'+dbBucket+'?fqdn='+rHost+'&uri='+rUri,'',subReqCallback);
+
+      function subReqCallback(reply) {
+        if(reply.status!=200) {
+          // Rule not found
+
+          if(rUri.length==0) {
+            r.warn('Rule not found for ['+rUri+'] - returning 404');
+            r.return(404);
+          } else {
+            var lastSlash=rUri.lastIndexOf("/");
+
+            if(lastSlash==-1) {
+              r.warn('Rule not found for ['+rUri+'] - returning 404');
+              r.return(404);
+            } else {
+              rUri=rUri.substring(0,lastSlash);
+              r.warn('Rule not found, trying ['+rUri+']');
+
+              r.subrequest('/dbQuery/'+dbBucket+'?fqdn='+rHost+'&uri='+rUri,'',subReqCallback);
+            }
+          }
+        } else {
+          r.warn('subReqCallback got 200 for ['+rUri+']');
+          r.warn('JSON reply: URI['+reply.uri+'] status['+reply.status.toString()+'] body['+reply.responseText+']');
+
+          // REST API backend returns an array [{json}], the first element shall be parsed
+          var body = JSON.parse(reply.responseText)
+          r.warn('Found '+body.length+' DB records for ['+rUri+']');
+          var rule=body[0];
+
+          if (rule.enabled=='false') {
+            // Rule is disabled
+            r.warn('Rule is disabled - returning 404');
+            r.return(404);
+          } else {
+            r.warn('Rewrite rule ['+r.headersIn['host']+r.uri+'] -> ['+rule.rewrite+'] X-REDIRECT-SUPPORT ['+r.headersIn['X-REDIRECT-SUPPORT']+']');
+
+            if(r.headersIn['X-REDIRECT-SUPPORT']=='true') {
+              // Client supports HTTP 302 - Redirect mode
+              r.warn('Redirect mode 302 to ['+rule.rewrite+']');
+              r.return(302,rule.rewrite);
+              r.mcgwLogging='REDIRECT_MODE';
+            } else {
+              // Client does not support HTTP 302 - Steering mode
+
+              r.warn('Steering mode to ['+rule.rewrite+']');
+
+              // Parses the rewrite URI into scheme, fqdn and URI
+              // [http(s)]://fqdn[/uri][?query_string]
+
+              // https://fqdn/a/b/c?var=value
+              var rewriteTokens = rule.rewrite.split('://');
+              var rewriteScheme = rewriteTokens[0];
+
+              // rewritePostScheme = fqdn/a/b/c?var=value
+              var rewritePostScheme = rewriteTokens[1];
+              var rewriteQueryString = rewritePostScheme.split('?')[1];
+              var rewriteFQDNURI = rewritePostScheme.split('?')[0]+'/';
+
+              var rewriteFQDN = rewriteFQDNURI.split('/')[0];
+              var fullURI = rewriteFQDNURI.split('/');
+
+              //var rewriteURI = rewriteFQDNURI.split('/')[1];
+              var rewriteURI = fullURI.slice(1,-1);
+              var steeredURI = rewriteURI.join('/');
+
+              r.warn('POSTSCHEME['+rewritePostScheme+'] QSTRING['+rewriteQueryString+']/['+r.variables.query_string+'] FULLURI['+fullURI+'] FQDNURI['+rewriteFQDNURI+'] REWRITEURI['+rewriteURI+'] -- ['+steeredURI+']');
+
+              if (steeredURI == undefined) {
+                steeredURI='';
+              } else {
+                steeredURI='/'+steeredURI;
+              }
+              if (rewriteQueryString == undefined) {
+                rewriteQueryString='';
+              } else {
+                rewriteQueryString='?'+rewriteQueryString;
+              }
+              if (r.variables.query_string == undefined) {
+                rewriteQueryString='';
+              } else {
+                rewriteQueryString='?'+rewriteQueryString+'&'+r.variables.query_string;
+              }
+
+              var targetRewrite=rewriteScheme+'://'+rewriteFQDN+steeredURI+rewriteQueryString;
+
+              r.warn('Rewrite ['+rule.rewrite+'] -> scheme['+rewriteScheme+'] fqdn['+rewriteFQDN+'] URI['+steeredURI+'] queryString['+rewriteQueryString+'] -> ['+targetRewrite+']');
+
+              // Proxies the client request
+              r.subrequest('/steeringMode/'+targetRewrite,{method: r.method, args: ''},steeringModeSubReqCallback);
+            }
+          }
+        }
+
+        function steeringModeSubReqCallback(steeringReply) {
+          // Steering mode - returns the steered API response back to the client
+
+          r.warn('steeringModeSubReqCallback got ['+steeringReply.status+'] ['+steeringReply.responseText+']');
+          r.status=steeringReply.status;
+
+          for (var header in steeringReply.headersOut) {
+            r.headersOut[header] = steeringReply.headersOut[header];
+          }
+
+          r.sendHeader();
+          r.send(steeringReply.responseText);
+          r.finish();
+        }
+      }
+    }

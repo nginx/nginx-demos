@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-mcgw
+  namespace: nginx-mcgw
+  labels:
+    app: nginx-mcgw
+spec:
+  selector:
+    matchLabels:
+      app: nginx-mcgw
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-mcgw
+    spec:
+      containers:
+      - name: nginx-mcgw
+        image: YOUR_PRIVATE_REGISTRY/nginxplus-js
+        ports:
+        - containerPort: 80
+        - containerPort: 8080
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-default-conf
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+        - name: nginx-api-conf
+          mountPath: /etc/nginx/conf.d/api.conf
+          subPath: api.conf
+        - name: mcgw-js
+          mountPath: /etc/nginx/conf.d/mcgw.js
+          subPath: mcgw.js
+        - name: mcgw-conf
+          mountPath: /etc/nginx/conf.d/mcgw.conf
+          subPath: mcgw.conf
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: nginx-conf
+      - name: nginx-default-conf
+        configMap:
+          name: nginx-default-conf
+      - name: nginx-api-conf
+        configMap:
+          name: nginx-api-conf
+      - name: mcgw-conf
+        configMap:
+          name: mcgw-conf
+      - name: mcgw-js
+        configMap:
+          name: mcgw-js
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-mcgw
+  namespace: nginx-mcgw
+  labels:
+    app: nginx-mcgw
+spec:
+  ports:
+  - name: http
+    port: 80
+  - name: api
+    port: 8080
+  selector:
+    app: nginx-mcgw
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-mcgw
+  namespace: nginx-mcgw
+  annotations:
+    nginx.org/proxy-connect-timeout: "30s"
+    nginx.org/proxy-read-timeout: "20s"
+    nginx.org/client-max-body-size: "4m"
+    nginx.com/health-checks: "true"
+  labels:
+    app: nginx-mcgw
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - mcgw.ff.lan
+      - api.mcgw.ff.lan
+      - api.ff.lan
+    secretName: mcgw.ff.lan
+  rules:
+    - host: mcgw.ff.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-mcgw
+                port:
+                  number: 80
+    - host: api.mcgw.ff.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-mcgw
+                port:
+                  number: 8080
+    - host: api.ff.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-mcgw
+                port:
+                  number: 80

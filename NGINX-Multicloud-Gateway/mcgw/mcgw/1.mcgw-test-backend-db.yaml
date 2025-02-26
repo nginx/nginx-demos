@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcgw-test-backend-db
+  namespace: nginx-mcgw
+  labels:
+    app: mcgw-test-backend-db
+spec:
+  selector:
+    matchLabels:
+      app: mcgw-test-backend-db
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mcgw-test-backend-db
+    spec:
+      containers:
+      - name: mcgw-test-backend-db
+        image: YOUR_PRIVATE_REGISTRY/mcgw-test-backend-db:1.0
+        ports:
+        - containerPort: 5000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcgw-test-backend-db
+  namespace: nginx-mcgw
+  labels:
+    app: mcgw-test-backend-db
+spec:
+  ports:
+  - port: 5000
+  selector:
+    app: mcgw-test-backend-db
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcgw-test-backend-db
+  namespace: nginx-mcgw
+  annotations:
+    nginx.org/proxy-connect-timeout: "30s"
+    nginx.org/proxy-read-timeout: "20s"
+    nginx.org/client-max-body-size: "4m"
+    nginx.com/health-checks: "true"
+  labels:
+    app: nginx-mcgw
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - db.mcgw.ff.lan
+    secretName: mcgw.ff.lan
+  rules:
+    - host: db.mcgw.ff.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcgw-test-backend-db
+                port:
+                  number: 5000

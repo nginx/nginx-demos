@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcgw-conf
+  namespace: nginx-mcgw
+data:
+  mcgw.conf: |-
+    upstream upstream-db {
+      zone upstream-db 64k;
+
+      # Upstream DB REST API endpoint
+      server mcgw-test-backend-db.nginx-mcgw.svc.cluster.local:5000;
+    }
+
+    proxy_cache_path /var/tmp/cache levels=1:2 keys_zone=dbQueryCache:10m max_size=20m inactive=1m use_temp_path=off;
+    proxy_cache_key "$scheme://$host$request_uri$query_string"; 
+
+    log_format mcgw-basic '[MCGW basic] $remote_addr [$time_local] $http_host '
+                           '"$request" $status';
+
+    log_format mcgw-full '[MCGW full] $remote_addr [$time_local] $http_host '
+                           '"$request" "$request_body" $status $body_bytes_sent '
+                           '"$http_referer" "$http_user_agent"';
+
+    # Keyval zone for dynamic log level configuration
+    # key: [request FQDN]:[request URI] - value: [none|basic|full]
+    keyval_zone zone=dynamic_loglevel:1M state=/var/tmp/dynamic_loglevel.json type=prefix;
+    keyval $host:$uri $dynamic_loglevel zone=dynamic_loglevel;
+
+    server {
+      server_name $host;
+      resolver 8.8.8.8;
+      listen 80;
+
+      location / {
+        js_content mcgw.dbQuery;
+
+        if ( $dynamic_loglevel = basic ) {
+          access_log /var/log/nginx/access.log mcgw-basic;
+        }
+        if ( $dynamic_loglevel = full ) {
+          access_log /var/log/nginx/access.log mcgw-full;
+        }
+      }
+
+      location ~ /dbQuery/(.*) {
+        internal;
+
+        proxy_cache dbQueryCache;
+        proxy_cache_lock on;
+        proxy_cache_valid 200 1m;
+        proxy_ignore_headers Set-Cookie Cache-Control;
+        proxy_cache_methods GET;
+
+        proxy_set_header Host db.mcgw.ff.lan;
+        proxy_pass http://upstream-db/$1$query_string;
+      }
+
+      location ~ /steeringMode/(.*) {
+        internal;
+
+        proxy_buffer_size 256k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        subrequest_output_buffer_size 256k;
+
+        proxy_ssl_session_reuse off;
+        proxy_ssl_server_name on;
+        proxy_pass $1$query_string;
+      }
+    }

@@ -19,10 +19,15 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|
 |-----|-----------|
+|NGINX Advanced Healthcheck|Advanced active healthchecks for NGINX Plus|
 |NGINX API gateway|Configure NGINX as an API gateway|
+|NGINX API Steering|NGINX as an API gateway using an external data source for authentication, authorization and steering|
+|NGINX Docker Image Builder|Tool to build several docker images for NGINX Plus, NGINX App Protect, NGINX Agent|
 |NGINX Gateway Fabric|Simple overview of configuring NGINX Gateway Fabric to route traffic within Kubernetes|
 |NGINX Ingress Controller|Simple overview of deploying and configuring NGINX Ingress Controller|
+|NGINX Multicloud Gateway|NGINX setup for URI-based kubernetes traffic routing|
 |NGINX One|Simple overview of NGINX One and its capabilities|
+|NGINX SOAP REST|Example NGINX configuration to translate between SOAP and REST|
 
 ## Contributing
 
