@@ -26,6 +26,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |NGINX Gateway Fabric|Simple overview of configuring NGINX Gateway Fabric to route traffic within Kubernetes|
 |NGINX Ingress Controller|Simple overview of deploying and configuring NGINX Ingress Controller|
 |NGINX Multicloud Gateway|NGINX setup for URI-based kubernetes traffic routing|
+|NGINX NIM Docker|Tool to build docker images for NGINX Instance Manager|
 |NGINX One|Simple overview of NGINX One and its capabilities|
 |NGINX SOAP REST|Example NGINX configuration to translate between SOAP and REST|
 
