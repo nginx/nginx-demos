@@ -1,0 +1,6 @@
+cryptography
+secrets
+uvicorn
+fastapi
+typing_extensions
+ldap3

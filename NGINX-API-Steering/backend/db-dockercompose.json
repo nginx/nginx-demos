@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "enabled": true,
+    "uri": "v1.0/api_get",
+    "matchRules": {
+      "method": "GET",
+      "roles": "guest"
+    },
+    "operation": {
+      "url": "https://api-server-1:5000/get_data"
+    }
+  },
+  {
+    "id": 2,
+    "enabled": true,
+    "uri": "v1.0/api_post",
+    "matchRules": {
+      "method": "POST",
+      "roles": "devops"
+    },
+    "operation": {
+      "url": "https://api-server-2:5000/echo_data"
+    },
+    "json": {
+      "to_server": {
+        "set": [
+          {
+            "field1": "value1"
+          },
+          {
+            "field2": "value2"
+          }
+        ],
+        "del": [
+          "group"
+        ]
+      },
+      "to_client": {
+        "set": [
+          {
+            "new_response_field": "ADDED"
+          }
+        ],
+        "del": [
+          "hostname"
+        ]
+      }
+    }
+  },
+  {
+    "id": 3,
+    "enabled": true,
+    "uri": "v1.0/api_post_no_change",
+    "matchRules": {
+      "method": "POST",
+      "roles": "devops"
+    },
+    "operation": {
+      "url": "https://api-server-2:5000/echo_data"
+    }
+  },
+  {
+    "id": 4,
+    "enabled": true,
+    "uri": "v1.0/template_test",
+    "matchRules": {
+      "method": "POST",
+      "roles": "guest"
+    },
+    "operation": {
+      "url": "https://api-server-2:5000/echo_data"
+    },
+    "template": {
+      "name": "",
+      "age": 0,
+      "address": {
+        "street": "",
+        "city": ""
+      }
+    }
+  }
+]

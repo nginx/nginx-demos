@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  openldap:
+    container_name: openldap
+    image: osixia/openldap:1.5.0
+    restart: always
+    ports:
+      - 389:389
+      - 636:636
+    networks:
+      lab-network:
+        ipv4_address: 10.5.0.10
+    volumes:
+      - ./ldap/ldif:/ldif:ro
+    healthcheck:
+      test: ["CMD-SHELL", "ldapadd -x -D cn=admin,dc=example,dc=org -w admin -H ldap://localhost -ZZ -f /ldif/setup.ldif || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+
+  ldap-connector:
+    container_name: ldap-connector
+    image: ldap-connector
+    build:
+      dockerfile: ldap/connector/Dockerfile
+    ports:
+      - 5389:5389
+    networks:
+      lab-network:
+        ipv4_address: 10.5.0.11
+    environment:
+      - LDAP_SERVER=openldap:389
+
+  source-of-truth:
+    container_name: source-of-truth
+    image: source-of-truth
+    build:
+      dockerfile: source-of-truth/Dockerfile
+    ports:
+      - 10080:10080
+    networks:
+      lab-network:
+        ipv4_address: 10.5.0.12
+
+  echo-server:
+    container_name: echo-server
+    image: echo-server
+    build:
+      dockerfile: echo-server/Dockerfile
+    ports:
+      - 8000:8000
+    networks:
+      lab-network:
+        ipv4_address: 10.5.0.13
+
+  nginx:
+    container_name: nginx
+    image: nginx-soap-rest
+    build:
+      dockerfile: nginx/Dockerfile
+      secrets:
+        - nginx-crt
+        - nginx-key
+    ports:
+      - 80:80
+    networks:
+      lab-network:
+        ipv4_address: 10.5.0.14
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/soaprest.js:/etc/nginx/conf.d/soaprest.js:ro
+      - ./nginx/soaprest.conf:/etc/nginx/conf.d/soaprest.conf:ro
+      - /dev/null:/etc/nginx/conf.d/default.conf:ro
+
+secrets:
+  nginx-crt:
+    name: nginx-crt
+    file: ${NGINX_CERT}
+  nginx-key:
+    name: nginx-key
+    file: ${NGINX_KEY}
+
+networks:
+  lab-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/24
+          gateway: 10.5.0.1

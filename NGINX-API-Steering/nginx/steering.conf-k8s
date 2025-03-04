@@ -1,0 +1,75 @@
+js_import steering from conf.d/steering.js;
+
+resolver kube-dns.kube-system.svc.cluster.local;
+
+upstream backend-db
+{
+	zone backend-db 64k;
+
+	# Steering DB REST API endpoint
+	server backend:5000;
+}
+
+proxy_cache_path /var/cache/nginx/jwk levels=1 keys_zone=jwk:1m max_size=10m;
+proxy_cache_path /var/tmp/cache levels=1:2 keys_zone=dbQueryCache:10m max_size=20m inactive=1m use_temp_path=off;
+proxy_cache_key "$scheme://$host$request_uri$query_string";
+
+log_format jwt '$remote_addr - $remote_user [$time_local] "$request" '
+'$status $body_bytes_sent "$http_referer" "$http_user_agent" '
+'$jwt_header_alg $jwt_claim_sub';
+
+auth_jwt_claim_set $jwt_claim_roles roles;
+
+server
+{
+	listen 80;
+	server_name $host;
+	status_zone steering;
+
+	location /
+	{
+		auth_jwt "authentication required";
+		auth_jwt_key_request /_jwks_uri;
+
+		access_log /var/log/nginx/api_steering_access.log jwt;
+		access_log /var/log/nginx/access.log main;
+
+		error_log /var/log/nginx/api_steering_error.log debug;
+		error_log /var/log/nginx/error.log debug;
+
+		js_content steering.dbQuery;
+	}
+
+	location = /_jwks_uri
+	{
+		internal;
+		proxy_method GET;
+		proxy_cache jwk; # Cache responses
+		proxy_pass http://backend-db/jwks.json; # Obtain keys from here
+	}
+
+	location ~ /dbQuery/(.*)
+	{
+		internal;
+
+		proxy_cache dbQueryCache;
+		proxy_cache_bypass $http_pragma;
+		proxy_cache_lock on;
+		proxy_cache_valid 200 1m;
+
+		proxy_pass http://backend-db/$1;
+	}
+
+	location ~ /steeringMode/(.*)
+	{
+		internal;
+
+		proxy_ssl_session_reuse off;
+		proxy_ssl_server_name on;
+
+		proxy_pass_request_headers on;
+		proxy_pass_request_body on;
+
+		proxy_pass $1;
+	}
+}

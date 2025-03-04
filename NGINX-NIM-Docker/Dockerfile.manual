@@ -1,0 +1,40 @@
+FROM ubuntu:20.04
+
+ARG NIM_DEBFILE
+ARG SM_IMAGE=nim-files/.placeholder
+ARG PUM_IMAGE=nim-files/.placeholder
+
+# Initial setup
+RUN apt-get update && \
+	DEBIAN_FRONTEND=noninteractive apt-get install -y -q build-essential git nano curl jq wget gawk \
+		nginx lsb-release rsyslog systemd apt-transport-https ca-certificates netcat && \
+	mkdir -p /deployment/setup
+
+# NGINX Instance Manager 2.4.0+
+COPY $NIM_DEBFILE /deployment/setup/nim.deb
+COPY $SM_IMAGE /deployment/setup/sm.deb
+COPY $PUM_IMAGE /deployment/setup/pum.deb
+
+COPY ./container/startNIM.sh /deployment/
+RUN chmod +x /deployment/startNIM.sh
+
+WORKDIR /deployment/setup
+
+COPY $NIM_DEBFILE /deployment/setup/nim.deb
+
+RUN apt-get -y install /deployment/setup/nim.deb && \
+	curl -s http://hg.nginx.org/nginx.org/raw-file/tip/xml/en/security_advisories.xml > /usr/share/nms/cve.xml \
+	# Optional Security Monitoring
+	&& if [ "$SM_IMAGE" != "nim-files/.placeholder" ] ; then \
+	apt-get -y install /deployment/setup/sm.deb; fi \
+	# Optional WAF Policy Compiler
+	&& if [ "$PUM_IMAGE" != "nim-files/.placeholder" ] ; then \
+	apt-get -y install /deployment/setup/pum.deb; fi \
+	# Set permissions
+	&& chmod +x /etc/nms/scripts/*.sh \
+	&& wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_`dpkg --print-architecture` -O /usr/bin/yq \
+	&& chmod +x /usr/bin/yq \
+	&& rm -r /deployment/setup
+
+WORKDIR /deployment
+CMD /deployment/startNIM.sh
