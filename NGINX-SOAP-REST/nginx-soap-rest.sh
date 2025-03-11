@@ -52,12 +52,12 @@ case $MODE in
 			exit
 		fi
 
-		DOCKER_BUILDKIT=1 docker-compose -p $PROJECT_NAME -f $DOCKERCOMPOSE up -d --remove-orphans
+		DOCKER_BUILDKIT=1 docker compose -p $PROJECT_NAME -f $DOCKERCOMPOSE up -d --remove-orphans
 	;;
 	'stop')
 		export NGINX_CERT="x"
 		export NGINX_KEY="x"
-		docker-compose -p $PROJECT_NAME -f $DOCKERCOMPOSE down
+		docker compose -p $PROJECT_NAME -f $DOCKERCOMPOSE down
 	;;
 	*)
 		echo "$0 [start|stop]"
