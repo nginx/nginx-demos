@@ -10,16 +10,17 @@ $0 [options]\n\n
 -h\t\t\t- This help\n
 -o [start|stop]\t- Start/stop the lab\n
 -C [file.crt]\t\t- Certificate file to pull packages from the official NGINX repository\n
--K [file.key]\t\t- Key file to pull packages from the official NGINX repository\n\n
+-K [file.key]\t\t- Key file to pull packages from the official NGINX repository\n
+-j [license.jwt]\t- JWT license for NGINX Plus R33+\n\n
 === Examples:\n\n
 Lab start:\n
-\t$0 -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key\n\n
+\t$0 -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key -j ./license.jwt\n\n
 Lab stop:\n
 \t$0 -o stop\n\n
 "
 
 
-while getopts 'ho:C:K:' OPTION
+while getopts 'ho:C:K:j:' OPTION
 do
         case "$OPTION" in
                 h)
@@ -35,6 +36,9 @@ do
                 K)
                         export NGINX_KEY=$OPTARG
                 ;;
+		j)
+			export NGINX_JWT=$OPTARG
+		;;
 	esac
 done
 
@@ -46,9 +50,9 @@ fi
 
 case $MODE in
 	'start')
-		if [ -z "${NGINX_CERT}" ] || [ -z "${NGINX_KEY}" ]
+		if [ -z "${NGINX_CERT}" ] || [ -z "${NGINX_KEY}" ] || [ -z "${NGINX_JWT}" ]
 		then
-			echo "Missing NGINX Plus certificate/key"
+			echo "Missing NGINX Plus certificate/key/jwt license"
 			exit
 		fi
 
@@ -57,6 +61,7 @@ case $MODE in
 	'stop')
 		export NGINX_CERT="x"
 		export NGINX_KEY="x"
+		export NGINX_JWT="x"
 		docker compose -p $PROJECT_NAME -f $DOCKERCOMPOSE down
 	;;
 	*)

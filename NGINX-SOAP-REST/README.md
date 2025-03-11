@@ -11,8 +11,8 @@ NGINX Plus manages client requests based on service definitions provided by an e
 This repo has been tested with:
 
 - Linux VM
-- Docker-compose v2.20.2+
-- NGINX Plus R29+ license (`nginx-repo.crt` and `nginx-repo.key`)
+- Docker compose v2.20.2+
+- NGINX Plus R33+ license (`nginx-repo.crt`, `nginx-repo.key` and `license.jwt`)
 
 ## Current status / work in progress
 
