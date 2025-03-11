@@ -64,7 +64,7 @@ To start the environment:
 1. Run the startup script: during its first run it will build all Docker images
 
 ```
-$ ./nginx-soap-rest.sh -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key 
+$ ./nginx-soap-rest.sh -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key -j ./license.jwt
 [+] Running 6/6
 [...]
  ✔ Network nginx-soap-rest_lab-network  Created
