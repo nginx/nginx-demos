@@ -11,8 +11,8 @@ NGINX Plus manages client requests based on service definitions provided by an e
 This repo has been tested with:
 
 - Linux VM
-- Docker-compose v2.20.2+
-- NGINX Plus R29+ license (`nginx-repo.crt` and `nginx-repo.key`)
+- Docker compose v2.20.2+
+- NGINX Plus R33+ license (`nginx-repo.crt`, `nginx-repo.key` and `license.jwt`)
 
 ## Current status / work in progress
 
@@ -64,7 +64,7 @@ To start the environment:
 1. Run the startup script: during its first run it will build all Docker images
 
 ```
-$ ./nginx-soap-rest.sh -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key 
+$ ./nginx-soap-rest.sh -o start -C /etc/ssl/nginx/nginx-repo.crt -K /etc/ssl/nginx/nginx-repo.key -j ./license.jwt
 [+] Running 6/6
 [...]
  ✔ Network nginx-soap-rest_lab-network  Created
