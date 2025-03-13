@@ -46,4 +46,4 @@ RUN chmod +x /deployment/start.sh && touch /.dockerenv
 EXPOSE 80
 STOPSIGNAL SIGTERM
 
-CMD /deployment/start.sh
+CMD ["/deployment/start.sh"]
