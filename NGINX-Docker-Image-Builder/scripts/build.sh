@@ -87,6 +87,7 @@ fi
 if ([ ! -z "${NAP_WAF}" ] && [ -z "${NGINX_OSS}" ])
 then
 	echo "=> Building with NGINX App Protect WAF"
+	OPT_PLATFORM="--platform linux/amd64" # for NGINX App Protect WAF, which is only available for x86_64
 fi
 
 if [ -z "${NGINX_OSS}" ]
@@ -103,6 +104,7 @@ then
 	DOCKER_BUILDKIT=1 docker build --no-cache -f $DOCKERFILE_NAME \
 		--secret id=nginx-key,src=$NGINX_KEY --secret id=nginx-crt,src=$NGINX_CERT \
 		--build-arg NAP_WAF=$NAP_WAF --build-arg NGINX_AGENT=$NGINX_AGENT \
+		$OPT_PLATFORM \
 		-t $IMAGENAME .
 else
 	echo "=> Building with NGINX Open Source"
