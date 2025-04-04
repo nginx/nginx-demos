@@ -1,5 +1,14 @@
-#####################
-# Main global owner #
-#####################
+###############
+# Demo owners #
+###############
 
-*
+nginx/advanced-healthchecks @fabriziofiorucci
+nginx/api-gateway @alessfg
+nginx/api-steering @fabriziofiorucci
+nginx/docker-image-builder @fabriziofiorucci
+nginx/multicloud-gateway @fabriziofiorucci
+nginx/soap-to-rest @fabriziofiorucci
+nginx-gateway-fabric/traffic-splitting @sjberman
+nginx-ingress-controller/ingress-deployment @DylenTurnbull
+nginx-instance-manager/docker-deployment @fabriziofiorucci
+nginx-workshops @apcurrier @sdutta9

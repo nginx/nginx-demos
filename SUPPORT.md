@@ -28,10 +28,6 @@ Want to get in touch with the NGINX development team directly? Try using the rel
 
 Please see the [contributing guide](/CONTRIBUTING.md) for guidelines on how to best contribute to this project.
 
-<!-- ## Commercial Support
-
-Commercial support for this project may be available. Please get in touch with [NGINX sales](https://www.f5.com/products/get-f5/) or check your contract details for more information! -->
-
 ## Community Support
 
 This project does **not** offer commercial support. Community support is offered on a best effort basis through either GitHub issues/PRs/discussions or through any of our active communities.
