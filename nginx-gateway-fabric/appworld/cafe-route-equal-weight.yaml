@@ -16,7 +16,7 @@ spec:
     backendRefs:
     - name: coffee-v1
       port: 80
-      weight: 50
+      weight: 80
     - name: coffee-v2
       port: 80
-      weight: 50
+      weight: 80
