@@ -13,7 +13,9 @@ The following is a set of guidelines for contributing to this project. We really
 
 Follow the instructions on the README's [Getting Started](/README.md#Getting-Started) section to get this project up and running.
 
-<!-- ### Project Structure (OPTIONAL) -->
+## Project Structure
+
+This repo contains multiple demos. Each demo contained in this repo has to be fully functional and have an active owner. The active owner can be found in the [`CODEOWNERS`](/.github/CODEOWNERS) file. At this moment, there is no automated way to verify if demos are functional, but in the future there will be an automated pipeline. If a demo is reported to be non-functional, the owner will be notified. If the demo is not fixed/updated within a reasonable timeline, the demo will be shelved into a different non-functional folder. If after a further reasonable amount of time the demo has still not been fixed/updated, the demo will be removed from this repo.
 
 ## Contributing
 
@@ -34,13 +36,11 @@ To suggest a feature or enhancement, please create an issue on GitHub with the l
 
 #### F5 Contributor License Agreement (CLA)
 
-F5 requires all contributors to agree to the terms of the F5 CLA (available [here](https://github.com/f5/f5-cla/.github/blob/main/docs/f5_cla.md)) before any of their changes can be incorporated into an F5 Open Source repository (even contributions to the F5 CLA itself!).
+F5 requires all contributors to agree to the terms of the F5 CLA (available [here](https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md)) before any of their changes can be incorporated into an F5 Open Source repository (even contributions to the F5 CLA itself!).
 
 If you have not yet agreed to the F5 CLA terms and submit a PR to this repository, a bot will prompt you to view and agree to the F5 CLA. You will have to agree to the F5 CLA terms through a comment in the PR before any of your changes can be merged. Your agreement signature will be safely stored by F5 and no longer be required in future PRs.
 
 ## Code Guidelines
-
-<!-- ### Go/Python/Bash/etc... Guidelines (OPTIONAL) -->
 
 ### Git Guidelines
 
