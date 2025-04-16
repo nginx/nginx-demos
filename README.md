@@ -50,8 +50,10 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|Owner|
 |-----|-----------|-----|
-|[NGINX basics](nginx-workshops/nginx-basics/)|A 101 level introduction to NGINX|@apcurrier|
-|[NGINX One](nginx-workshops/nginx-one/)|Learn everything you need to get started with NGINX One and its capabilities|@sdutta9|
+|[NGINX basics](nginx-workshops/README.md)|A 101 level introduction to NGINX|@apcurrier, @chrisakker, @sdutta9 |
+|[NGINX Ingress Controller](nginx-workshops/README.md)|Learn everything you need to get started with NGINX Ingress Controller and its capabilities|@apcurrier, @chrisakker, @sdutta9|
+|[NGINXaaS for Azure](nginx-workshops/README.md)|Learn everything you need to get started with NGINX as a Service for Azure (NGINXaaS) and its capabilities|@apcurrier, @chrisakker, @sdutta9|
+|[NGINX One Console](nginx-workshops/README.md)|Learn everything you need to get started with NGINX One Console and its capabilities|@apcurrier, @chrisakker, @sdutta9|
 
 ## Contributing
 
