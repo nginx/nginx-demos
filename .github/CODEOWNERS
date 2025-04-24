@@ -11,4 +11,4 @@ nginx/soap-to-rest @fabriziofiorucci
 nginx-gateway-fabric/traffic-splitting @sjberman
 nginx-ingress-controller/ingress-deployment @DylenTurnbull
 nginx-instance-manager/docker-deployment @fabriziofiorucci
-nginx-workshops @apcurrier @sdutta9
+nginx-workshops @apcurrier @chrisakker @sdutta9
