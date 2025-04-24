@@ -17,18 +17,43 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 ## Available Demos
 
-|Title|Description|
-|-----|-----------|
-|NGINX Advanced Healthcheck|Advanced active healthchecks for NGINX Plus|
-|NGINX API gateway|Configure NGINX as an API gateway|
-|NGINX API Steering|NGINX as an API gateway using an external data source for authentication, authorization and steering|
-|NGINX Docker Image Builder|Tool to build several docker images for NGINX Plus, NGINX App Protect, NGINX Agent|
-|NGINX Gateway Fabric|Simple overview of configuring NGINX Gateway Fabric to route traffic within Kubernetes|
-|NGINX Ingress Controller|Simple overview of deploying and configuring NGINX Ingress Controller|
-|NGINX Multicloud Gateway|NGINX setup for URI-based kubernetes traffic routing|
-|NGINX NIM Docker|Tool to build docker images for NGINX Instance Manager|
-|NGINX One|Simple overview of NGINX One and its capabilities|
-|NGINX SOAP REST|Example NGINX configuration to translate between SOAP and REST|
+### NGINX
+
+|Title|Description|Owner|
+|-----|-----------|-----|
+|[NGINX advanced healthchecks](nginx/advanced-healthchecks/)|Advanced active healthchecks for NGINX Plus|@fabriziofiorucci|
+|[NGINX API gateway](nginx/api-gateway/)|Configure NGINX as an API gateway|@alessfg|
+|[NGINX API steering](nginx/api-steering/)|NGINX as an API gateway using an external data source for authentication, authorization and steering|@fabriziofiorucci|
+|[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, NGINX App Protect, NGINX Agent|@fabriziofiorucci|
+|[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
+|[NGINX SOAP REST](nginx/soap-to-rest/)|Example NGINX configuration to translate between SOAP and REST|@fabriziofiorucci|
+
+### NGINX Gateway Fabric (NGF)
+
+|Title|Description|Owner|
+|-----|-----------|-----|
+|[NGINX Gateway Fabric traffic splitting](nginx-gateway-fabric/traffic-splitting/)|Simple overview of configuring NGINX Gateway Fabric to route traffic within Kubernetes|@sjberman|
+
+### NGINX Ingress Controller (NIC)
+
+|Title|Description|Owner|
+|-----|-----------|-----|
+|[NGINX Ingress Controller deployment](nginx-ingress-controller/ingress-deployment/)|Simple overview of deploying and configuring NGINX Ingress Controller|@DylenTurnbull|
+
+### NGINX Instance Manager (NIM)
+
+|Title|Description|Owner|
+|-----|-----------|-----|
+|[NGINX Instance Manager Docker deployment](nginx-instance-manager/docker-deployment/)|Tool to build docker images for NGINX Instance Manager|@fabriziofiorucci|
+
+### NGINX Workshops
+
+|Title|Description|Owner|
+|-----|-----------|-----|
+|[NGINX Basics](nginx-workshops/README.md)|A 101 level introduction to NGINX|@apcurrier, @chrisakker, @sdutta9|
+|[NGINX Ingress Controller](nginx-workshops/README.md)|Learn everything you need to get started with NGINX Ingress Controller and its capabilities|@apcurrier, @chrisakker, @sdutta9|
+|[NGINXaaS for Azure](nginx-workshops/README.md)|Learn everything you need to get started with NGINX as a Service for Azure (NGINXaaS) and its capabilities|@apcurrier, @chrisakker, @sdutta9|
+|[NGINX One Console](nginx-workshops/README.md)|Learn everything you need to get started with NGINX One Console and its capabilities|@apcurrier, @chrisakker, @sdutta9|
 
 ## Contributing
 
