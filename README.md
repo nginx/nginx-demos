@@ -54,8 +54,8 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX Ingress Controller](nginx-workshops/README.md)|Learn everything you need to get started with NGINX Ingress Controller and its capabilities|@apcurrier, @chrisakker, @sdutta9|
 |[NGINXaaS for Azure](nginx-workshops/README.md)|Learn everything you need to get started with NGINX as a Service for Azure (NGINXaaS) and its capabilities|@apcurrier, @chrisakker, @sdutta9|
 |[NGINX One Console](nginx-workshops/README.md)|Learn everything you need to get started with NGINX One Console and its capabilities|@apcurrier, @chrisakker, @sdutta9|
-|[NGINX Ingress Controller Lab](nginx-workshops/README.md)|Hands-on lab for NGINX Ingress Controller|@fabriziofiorucci|
-|[NGINX Gateway Fabric Lab](nginx-workshops/README.md)|Hands-on lab for NGINX Gateway Fabric|@fabriziofiorucci|
+|[NGINX Ingress Controller Lab](nginx-workshops/README.md)|Lab for NGINX Ingress Controller|@fabriziofiorucci|
+|[NGINX Gateway Fabric Lab](nginx-workshops/README.md)|Lab for NGINX Gateway Fabric|@fabriziofiorucci|
 
 ## Contributing
 
