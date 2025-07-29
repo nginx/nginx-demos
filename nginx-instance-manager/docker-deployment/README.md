@@ -52,7 +52,6 @@ NGINX Instance Manager Docker image builder
 
  -h                     - This help
  -t [target image]      - Docker image name to be created
- -s                     - Enable Second Sight (https://github.com/F5Networks/SecondSight/) - optional
 
  Manual build:
 
@@ -65,20 +64,19 @@ NGINX Instance Manager Docker image builder
  -i                     - Automated build - requires cert & key
  -C [file.crt]          - Certificate file to pull packages from the official NGINX repository
  -K [file.key]          - Key file to pull packages from the official NGINX repository
- -W                     - Enable Security Monitoring - optional
- -P [version]           - Enable WAF policy compiler, version can be any [v3.1088.2|v4.100.1|v4.2.0|v4.218.0|v4.279.0|v4.402.0|v4.457.0|v4.583.0] - optional
+ -P [version]           - Enable WAF policy compiler, version can be [v3.1088.2|v4.100.1|v4.2.0|v4.218.0|v4.279.0|v4.402.0|v4.457.0|v4.583.0|v4.641.0|v4.762.0|v4.815.0|v5.17.0|v5.48.0|v5.144.0|v5.210.0|v5.264.0|v5.342.0|v5.442.0] - optional
 
  === Examples:
 
  Manual build:
-        ./scripts/buildNIM.sh -n nim-files/nms-instance-manager_2.6.0-698150575~focal_amd64.deb \
-                -w nim-files/nms-sm_1.0.0-697204659~focal_amd64.deb \
-                -p nim-files/nms-nap-compiler-v4.2.0.deb \
-                -t my.registry.tld/nginx-nms:2.6.0
+        ./scripts/buildNIM.sh -t my-private-registry/nginx-instance-manager:2.15.1-nap-v4.815.0-manualbuild \
+                -n nim-files/nms-instance-manager_2.15.1-1175574316~focal_amd64.deb \
+                -w nim-files/nms-sm_1.7.1-1046510610~focal_amd64.deb \
+                -p nim-files/nms-nap-compiler-v4.815.0_4.815.0-1~focal_amd64.deb
 
  Automated build:
-        ./scripts/buildNIM.sh -i -C nginx-repo.crt -K nginx-repo.key
-                -W -P v4.583.0 -t my.registry.tld/nginx-nms:latest
+        ./scripts/buildNIM.sh -i -C nginx-repo.crt -K nginx-repo.key \
+                -P v5.144.0 -t my.registry.tld/nginx-nms:latest
 ```
 
 ### Automated build
