@@ -1,4 +1,4 @@
-FROM nginx:stable-bullseye-perl
+FROM nginx:stable-bullseye-perl@sha256:fc78d87401fdbadf36c638febdad36ae17dd51d7b5d70bb0a34d94e0daa3a0e1
 
 ARG NMS_URL
 ARG NGINX_AGENT=false
