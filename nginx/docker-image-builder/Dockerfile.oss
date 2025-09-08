@@ -2,6 +2,7 @@ FROM nginx:stable-bullseye-perl@sha256:fc78d87401fdbadf36c638febdad36ae17dd51d7b
 
 ARG NMS_URL
 ARG NGINX_AGENT=false
+ARG NGINX_AGENT_VERSION=2
 
 # Initial packages setup
 RUN apt-get -y update \
@@ -22,7 +23,7 @@ RUN apt-get -y update \
         && curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
         && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://packages.nginx.org/nginx-agent/debian/ `lsb_release -cs` agent" > /etc/apt/sources.list.d/nginx-agent.list \
         && apt-get -y update \
-        && apt-get -y install nginx-agent; fi
+        && apt-get -y install nginx-agent=`apt-cache madison nginx-agent | grep "| $NGINX_AGENT_VERSION\." | awk '{print $3}' | head -n1`; fi
 
 # Startup script
 COPY ./container/start.sh /deployment/

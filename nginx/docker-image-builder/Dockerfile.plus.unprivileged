@@ -2,6 +2,7 @@ FROM debian:bullseye-slim@sha256:779034981fec838da124ff6ab9211499ba5d4e769dabdfd
 
 ARG NAP_WAF=false
 ARG NGINX_AGENT=false
+ARG NGINX_AGENT_VERSION=2
 
 ARG UID=101
 ARG GID=101
@@ -12,6 +13,8 @@ RUN apt-get -y update \
 	&& mkdir -p /deployment /etc/ssl/nginx /etc/nms \
 	&& addgroup --system --gid $GID nginx \
 	&& adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos "nginx user" --shell /bin/false --uid $UID nginx \
+        && addgroup --system --gid 1001 nginx-agent \
+        && usermod nginx -G nginx-agent \
 	&& wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq \
 	&& chmod +x /usr/bin/yq
 
@@ -44,7 +47,7 @@ RUN --mount=type=secret,id=nginx-crt,dst=/etc/ssl/nginx/nginx-repo.crt,mode=0644
         curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
         && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://packages.nginx.org/nginx-agent/debian/ `lsb_release -cs` agent" > /etc/apt/sources.list.d/nginx-agent.list \
         && apt-get -y update \
-        && apt-get -y install nginx-agent \
+        && apt-get -y install nginx-agent=`apt-cache madison nginx-agent | grep "| $NGINX_AGENT_VERSION\." | awk '{print $3}' | head -n1` \
 # implement changes required to run NGINX Agent as an unprivileged user
         && chown -R $UID:0 /etc/nginx-agent \
         && chmod -R g+w /etc/nginx-agent \
@@ -68,7 +71,9 @@ RUN rm /etc/nginx/conf.d/default.conf \
     && chown -R $UID:0 /usr/lib/nginx/modules \
     && chmod -R g+w /usr/lib/nginx/modules \
     && chown -R $UID:0 /etc/nms \
-    && chmod -R g+w /etc/nms
+    && chmod -R g+w /etc/nms \
+    && chown -R $UID:0 /run \
+    && chmod -R g+w /run
 
 # Startup script
 COPY ./container/start.sh /deployment/
