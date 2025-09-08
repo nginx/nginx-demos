@@ -26,7 +26,7 @@ NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
 
 NGINX Opensource and NGINX Agent image:\n
-  $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a\n"
+  $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2\n"
 
 while getopts 'ht:C:K:a:wOu' OPTION
 do
