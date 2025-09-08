@@ -51,21 +51,21 @@ NGINX Docker Image builder
  -w                     - Add NGINX App Protect WAF (requires NGINX Plus)
  -O                     - Use NGINX Open Source instead of NGINX Plus
  -u                     - Build unprivileged image (only for NGINX Plus)
- -a                     - Add NGINX Agent
+ -a [2|3]               - Add NGINX Agent v2 or v3
 
  === Examples:
 
  NGINX Plus and NGINX Agent image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a 2
 
  NGINX Plus, NGINX App Protect WAF and NGINX Agent image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a 2
 
  NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2
 
  NGINX Opensource and NGINX Agent image:
- ./scripts/build.sh -O -t registry.ff.lan:31005/nginx-docker:oss-root -a
+ ./scripts/build.sh -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2
 ```
 
 1. Clone this repository

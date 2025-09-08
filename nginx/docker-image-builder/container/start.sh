@@ -14,14 +14,6 @@ nginx
 sleep 2
 
 if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
-
-  # NGINX Agent version detection, change in behaviour in v2.24.0+
-  AGENT_VERSION=`nginx-agent -v|awk '{print $3}'`
-  AGENT_VERSION_MAJOR=`echo $AGENT_VERSION | awk -F\. '{print $1}' | sed 's/v//'`
-  AGENT_VERSION_MINOR=`echo $AGENT_VERSION | awk -F\. '{print $2}'`
-
-  echo "=> NGINX Agent version $AGENT_VERSION"
-
   PARM=""
 
   yq -i '

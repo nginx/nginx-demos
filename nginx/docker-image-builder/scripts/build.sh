@@ -14,21 +14,21 @@ $0 [options]\n\n
 -w\t\t\t- Add NGINX App Protect WAF (requires NGINX Plus)\n
 -O\t\t\t- Use NGINX Open Source instead of NGINX Plus\n
 -u\t\t\t- Build unprivileged image (only for NGINX Plus)\n
--a\t\t\t- Add NGINX Agent\n\n
+-a [2|3]\t\t- Add NGINX Agent v2 or v3\n\n
 === Examples:\n\n
 NGINX Plus and NGINX Agent image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a\n\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a 2\n\n
 
 NGINX Plus, NGINX App Protect WAF and NGINX Agent image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a\n\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a 2\n\n
 
 NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a\n\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
 
 NGINX Opensource and NGINX Agent image:\n
-  $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a\n"
+  $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2\n"
 
-while getopts 'ht:C:K:awOu' OPTION
+while getopts 'ht:C:K:a:wOu' OPTION
 do
 	case "$OPTION" in
 		h)
@@ -46,6 +46,7 @@ do
 		;;
 		a)
 			NGINX_AGENT=true
+			NGINX_AGENT_VERSION=$OPTARG
 		;;
 		w)
 			NAP_WAF=true
@@ -71,6 +72,12 @@ then
         exit
 fi
 
+if [ -z "${NGINX_AGENT_VERSION}" ]
+then
+        echo "NGINX Agent version is required"
+        exit
+fi
+
 if ([ -z "${NGINX_OSS}" ] && ([ -z "${NGINX_CERT}" ] || [ -z "${NGINX_KEY}" ]) )
 then
         echo "NGINX certificate and key are required for automated installation"
@@ -81,7 +88,13 @@ echo "=> Target docker image is $IMAGENAME"
 
 if [ "${NGINX_AGENT}" ]
 then
-	echo "=> Building with NGINX Agent"
+	if [ "${NGINX_AGENT_VERSION}" -eq "2" ] || [ "${NGINX_AGENT_VERSION}" -eq "3" ]
+	then
+		echo "=> Building with NGINX Agent v${NGINX_AGENT_VERSION}"
+	else
+		echo "NGINX Agent version must be either '2' or '3'"
+		exit
+	fi
 fi
 
 if ([ ! -z "${NAP_WAF}" ] && [ -z "${NGINX_OSS}" ])
@@ -104,12 +117,14 @@ then
 	DOCKER_BUILDKIT=1 docker build --no-cache -f $DOCKERFILE_NAME \
 		--secret id=nginx-key,src=$NGINX_KEY --secret id=nginx-crt,src=$NGINX_CERT \
 		--build-arg NAP_WAF=$NAP_WAF --build-arg NGINX_AGENT=$NGINX_AGENT \
+		--build-arg NGINX_AGENT_VERSION=$NGINX_AGENT_VERSION \
 		$OPT_PLATFORM \
 		-t $IMAGENAME .
 else
 	echo "=> Building with NGINX Open Source"
 	DOCKER_BUILDKIT=1 docker build --no-cache -f Dockerfile.oss \
 		--build-arg NGINX_AGENT=$NGINX_AGENT \
+		--build-arg NGINX_AGENT_VERSION=$NGINX_AGENT_VERSION \
 		-t $IMAGENAME .
 fi
 
