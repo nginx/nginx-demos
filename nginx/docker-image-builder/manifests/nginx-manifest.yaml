@@ -49,8 +49,10 @@ spec:
             # The Instance Group (NGINX Instance Manager) / Config Sync Group (NGINX One Console)
             value: "lab"
           - name: NGINX_AGENT_TAGS
-            # Comma-separated list of tags for the NGINX instance
-            value: "preprod,devops"
+            # Comma-separated list of tags for the NGINX instance - Agent v2 syntax
+            #value: "preprod,devops"
+            # Comma-separated list of tags for the NGINX instance - Agent v3 syntax
+            #value: "tenant=preprod,subtenant=datacentre1"
           - name: NGINX_AGENT_LOG_LEVEL
             # NGINX Agent loglevel - default is "info"
             value: "info"
