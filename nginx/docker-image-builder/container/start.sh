@@ -16,34 +16,59 @@ sleep 2
 if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
   PARM=""
 
-  yq -i '
-    .server.host=strenv(NGINX_AGENT_SERVER_HOST) |
-    .server.grpcPort=strenv(NGINX_AGENT_SERVER_GRPCPORT) |
-    .tls.enable=true |
-    .tls.skip_verify=true |
-    .tls.cert="" |
-    .tls.key=""
-    ' /etc/nginx-agent/nginx-agent.conf
+  NGINX_AGENT_VERSION=`nginx-agent -v | awk '{print $3}' | awk -F\. '{print $1}'`
 
-  if [[ ! -z "$NGINX_AGENT_INSTANCE_GROUP" ]]; then
-     PARM="${PARM} --instance-group $NGINX_AGENT_INSTANCE_GROUP"
-  fi
+  case "$NGINX_AGENT_VERSION" in
+    "v2")
+      yq -i '
+        .server.host=strenv(NGINX_AGENT_SERVER_HOST) |
+        .server.grpcPort=strenv(NGINX_AGENT_SERVER_GRPCPORT) |
+        .tls.enable=true |
+        .tls.skip_verify=true |
+        .tls.cert="" |
+        .tls.key=""
+        ' /etc/nginx-agent/nginx-agent.conf
 
-  if [[ ! -z "$NGINX_AGENT_TAGS" ]]; then
-     PARM="${PARM} --tags $NGINX_AGENT_TAGS"
-  fi
+      if [[ ! -z "$NGINX_AGENT_INSTANCE_GROUP" ]]; then
+         PARM="${PARM} --instance-group $NGINX_AGENT_INSTANCE_GROUP"
+      fi
 
-  if [[ ! -z "$NGINX_AGENT_SERVER_TOKEN" ]]; then
-    yq -i '
-      .server.token=strenv(NGINX_AGENT_SERVER_TOKEN)
-      ' /etc/nginx-agent/nginx-agent.conf
-  fi
+      if [[ ! -z "$NGINX_AGENT_TAGS" ]]; then
+         PARM="${PARM} --tags $NGINX_AGENT_TAGS"
+      fi
 
-  if [[ ! -z "$NGINX_AGENT_LOG_LEVEL" ]]; then
-    yq -i '
-      .log.level=strenv(NGINX_AGENT_LOG_LEVEL)
-      ' /etc/nginx-agent/nginx-agent.conf
-  fi
+      if [[ ! -z "$NGINX_AGENT_SERVER_TOKEN" ]]; then
+        yq -i '
+          .server.token=strenv(NGINX_AGENT_SERVER_TOKEN)
+          ' /etc/nginx-agent/nginx-agent.conf
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_LOG_LEVEL" ]]; then
+        yq -i '
+          .log.level=strenv(NGINX_AGENT_LOG_LEVEL)
+          ' /etc/nginx-agent/nginx-agent.conf
+      fi
+    ;;
+    "v3")
+      PARM="${PARM} --command-server-host ${NGINX_AGENT_SERVER_HOST} --command-server-port ${NGINX_AGENT_SERVER_GRPCPORT} --command-tls-skip-verify"
+
+      if [[ ! -z "$NGINX_AGENT_INSTANCE_GROUP" ]]; then
+         PARM="${PARM} --labels config-sync-group=${NGINX_AGENT_INSTANCE_GROUP}"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_TAGS" ]]; then
+         PARM="${PARM} --labels ${NGINX_AGENT_TAGS}"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_SERVER_TOKEN" ]]; then
+         PARM="${PARM} --command-auth-token ${NGINX_AGENT_SERVER_TOKEN}"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_LOG_LEVEL" ]]; then
+         PARM="${PARM} --log-level ${NGINX_AGENT_LOG_LEVEL}"
+      fi
+    ;;
+  esac
 fi
 
 if [[ "$NAP_WAF" == "true" ]]; then
@@ -53,22 +78,25 @@ if [[ "$NAP_WAF" == "true" ]]; then
     /opt/app_protect/bin/bd_agent &
     /usr/share/ts/bin/bd-socket-plugin tmm_count 4 proc_cpuinfo_cpu_mhz 2000000 total_xml_memory 471859200 total_umu_max_size 3129344 sys_max_account_id 1024 no_static_config &
 
-    yq -i '
-      .nap_monitoring.collector_buffer_size=50000 |
-      .nap_monitoring.processor_buffer_size=50000 |
-      .nap_monitoring.syslog_ip=strenv(FQDN) |
-      .nap_monitoring.syslog_port=10514 |
-      .extensions += ["nginx-app-protect","nap-monitoring"]
-      ' /etc/nginx-agent/nginx-agent.conf
-
+    if [[ "$NGINX_AGENT_VERSION" == "v2" ]]; then
+      yq -i '
+        .nap_monitoring.collector_buffer_size=50000 |
+        .nap_monitoring.processor_buffer_size=50000 |
+        .nap_monitoring.syslog_ip=strenv(FQDN) |
+        .nap_monitoring.syslog_port=10514 |
+        .extensions += ["nginx-app-protect","nap-monitoring"]
+        ' /etc/nginx-agent/nginx-agent.conf
+    fi
   else
-    yq -i '
-      .nap_monitoring.collector_buffer_size=50000 |
-      .nap_monitoring.processor_buffer_size=50000 |
-      .nap_monitoring.syslog_ip=strenv(FQDN) |
-      .nap_monitoring.syslog_port=514 |
-      .extensions += ["nginx-app-protect","nap-monitoring"]
-      ' /etc/nginx-agent/nginx-agent.conf
+    if [[ "$NGINX_AGENT_VERSION" == "v2" ]]; then
+      yq -i '
+        .nap_monitoring.collector_buffer_size=50000 |
+        .nap_monitoring.processor_buffer_size=50000 |
+        .nap_monitoring.syslog_ip=strenv(FQDN) |
+        .nap_monitoring.syslog_port=514 |
+        .extensions += ["nginx-app-protect","nap-monitoring"]
+        ' /etc/nginx-agent/nginx-agent.conf
+    fi
 
     su - nginx -s /bin/bash -c "/opt/app_protect/bin/bd_agent &"
     su - nginx -s /bin/bash -c "/usr/share/ts/bin/bd-socket-plugin tmm_count 4 proc_cpuinfo_cpu_mhz 2000000 total_xml_memory 471859200 total_umu_max_size 3129344 sys_max_account_id 1024 no_static_config &"
@@ -82,9 +110,11 @@ if [[ "$NAP_WAF" == "true" ]]; then
   chown nginx:nginx /opt/app_protect/pipe/*
 
 if [[ "$NAP_WAF_PRECOMPILED_POLICIES" == "true" ]]; then
-  yq -i '
-    .nginx_app_protect.precompiled_publication=true
-    ' /etc/nginx-agent/nginx-agent.conf
+  if [[ "$NGINX_AGENT_VERSION" == "v2" ]]; then
+    yq -i '
+      .nginx_app_protect.precompiled_publication=true
+      ' /etc/nginx-agent/nginx-agent.conf
+  fi
 fi
 
 fi
