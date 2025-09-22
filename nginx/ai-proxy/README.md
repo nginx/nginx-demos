@@ -233,7 +233,7 @@ The official NGINX image entrypoint runs `envsubst` on templates and creates an 
     }
     ```
 
-4. Send a request as `user-b` to the OpenAI model. `user-b` has not failover models available:
+4. Send a request as `user-b` to the OpenAI model. `user-b` has no failover models available:
 
     ```bash
     curl -s -X POST http://localhost:4242/v1/chat/completions \
