@@ -1,0 +1,32 @@
+{
+    "users": {
+        "user-a": {
+            "models": [
+                {
+                    "name": "gpt-5",
+                    "failover": "claude-sonnet-4-20250514"
+                },
+                {
+                    "name": "claude-sonnet-4-20250514"
+                }
+            ]
+        },
+        "user-b": {
+            "models": [
+                {
+                    "name": "gpt-5"
+                }
+            ]
+        }
+    },
+    "models": {
+        "gpt-5": {
+            "provider": "openai",
+            "location": "/openai"
+        },
+        "claude-sonnet-4-20250514": {
+            "provider": "anthropic",
+            "location": "/anthropic"
+        }
+    }
+}

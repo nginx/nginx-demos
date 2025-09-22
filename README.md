@@ -22,6 +22,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |Title|Description|Owner|
 |-----|-----------|-----|
 |[NGINX advanced healthchecks](nginx/advanced-healthchecks/)|Advanced active healthchecks for NGINX Plus|@fabriziofiorucci|
+|[NGINX AI Proxy](nginx/ai-proxy)|Configure NGINX as a simple AI proxy|@pleshakov|
 |[NGINX API gateway](nginx/api-gateway/)|Configure NGINX as an API gateway|@alessfg|
 |[NGINX API steering](nginx/api-steering/)|NGINX as an API gateway using an external data source for authentication, authorization and steering|@fabriziofiorucci|
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, NGINX App Protect, NGINX Agent|@fabriziofiorucci|
@@ -38,7 +39,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|Owner|
 |-----|-----------|-----|
-|[NGINX Ingress Controller deployment](nginx-ingress-controller/ingress-deployment/)|Simple overview of deploying and configuring NGINX Ingress Controller|@DylenTurnbull|
+|[NGINX Ingress Controller deployment](nginx-ingress-controller/ingress-deployment/)|Simple overview of deploying and configuring NGINX Ingress Controller|TBD|
 
 ### NGINX Instance Manager (NIM)
 
@@ -50,10 +51,10 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|Owner|
 |-----|-----------|-----|
-|[NGINX Basics](nginx-workshops/README.md)|A 101 level introduction to NGINX|@apcurrier, @chrisakker, @sdutta9|
-|[NGINX Ingress Controller](nginx-workshops/README.md)|Learn everything you need to get started with NGINX Ingress Controller and its capabilities|@apcurrier, @chrisakker, @sdutta9|
-|[NGINXaaS for Azure](nginx-workshops/README.md)|Learn everything you need to get started with NGINX as a Service for Azure (NGINXaaS) and its capabilities|@apcurrier, @chrisakker, @sdutta9|
-|[NGINX One Console](nginx-workshops/README.md)|Learn everything you need to get started with NGINX One Console and its capabilities|@apcurrier, @chrisakker, @sdutta9|
+|[NGINX Basics](nginx-workshops/README.md)|A 101 level introduction to NGINX|TBD|
+|[NGINX Ingress Controller](nginx-workshops/README.md)|Learn everything you need to get started with NGINX Ingress Controller and its capabilities|TBD|
+|[NGINXaaS for Azure](nginx-workshops/README.md)|Learn everything you need to get started with NGINX as a Service for Azure (NGINXaaS) and its capabilities|TBD|
+|[NGINX One Console](nginx-workshops/README.md)|Learn everything you need to get started with NGINX One Console and its capabilities|TBD|
 |[NGINX Ingress Controller Lab](nginx-workshops/README.md)|NGINX Ingress Controller lab|@fabriziofiorucci|
 |[NGINX Gateway Fabric Lab](nginx-workshops/README.md)|NGINX Gateway Fabric lab|@fabriziofiorucci|
 
