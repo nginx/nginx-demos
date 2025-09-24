@@ -51,6 +51,7 @@ NGINX Docker Image builder
  -w                     - Add NGINX App Protect WAF (requires NGINX Plus)
  -O                     - Use NGINX Open Source instead of NGINX Plus
  -u                     - Build unprivileged image (only for NGINX Plus)
+ -i [uid:gid]           - Set NGINX UID and GID (only for unprivileged images)
  -a [2|3]               - Add NGINX Agent v2 or v3
 
  === Examples:
@@ -63,6 +64,9 @@ NGINX Docker Image builder
 
  NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:
  ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2
+
+ NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image, custom UID and GID:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2
 
  NGINX Opensource and NGINX Agent image:
  ./scripts/build.sh -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2
