@@ -27,7 +27,7 @@ NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
 
 NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image, custom UID and GID:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1001770001:1001770001 -a 2\n\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2\n\n
 
 NGINX Opensource and NGINX Agent image:\n
   $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2\n"
