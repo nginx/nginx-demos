@@ -95,7 +95,7 @@ then
   exit
 fi
 
-if ([ -z "${NGINX_UID}" ] || -z "${NGINX_GID}" ])
+if ([ -z "${NGINX_UID}" ] || [ -z "${NGINX_GID}" ])
 then
   echo "Invalid UID and/or GID"
   exit
