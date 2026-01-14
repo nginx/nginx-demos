@@ -21,10 +21,12 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
   case "$NGINX_AGENT_VERSION" in
     "v2")
       yq -i '
+        .nginx.config_reload_monitoring_period="1s" |
         .server.host=strenv(NGINX_AGENT_SERVER_HOST) |
         .server.grpcPort=strenv(NGINX_AGENT_SERVER_GRPCPORT) |
         .tls.enable=true |
         .tls.skip_verify=true |
+        .tls.ca="" |
         .tls.cert="" |
         .tls.key=""
         ' /etc/nginx-agent/nginx-agent.conf
