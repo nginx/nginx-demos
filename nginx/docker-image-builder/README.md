@@ -90,7 +90,7 @@ Based on the information in the compatibility matrix, set the `-a` option accord
 - `NGINX_LICENSE` - NGINX R33+ JWT license token
 - `NGINX_AGENT_SERVER_HOST` - NGINX Instance Manager / NGINX One Console hostname/IP address
 - `NGINX_AGENT_SERVER_GRPCPORT` - NGINX Instance Manager / NGINX One Console gRPC port
-- `NGINX_AGENT_SERVER_TOKEN` - NGINX Instance Manager / NGINX One Console authentication token
+- `NGINX_AGENT_SERVER_TOKEN` - NGINX One Console authentication token (not needed for NGINX Instance Manager)
 - `NGINX_AGENT_INSTANCE_GROUP` - instance group (NGINX Instance Manager) / config sync group (NGINX One Console) for the NGINX instance
 - `NGINX_AGENT_TAGS` - comma separated list of tags for the NGINX instance
 - `NAP_WAF` - set to `"true"` to enable NGINX App Protect WAF (docker image built using `-w`) - NGINX Plus only
@@ -110,7 +110,7 @@ docker run --rm --name nginx -p [PORT_TO_EXPOSE] \
         -e "NGINX_LICENSE=<NGINX_JWT_LICENSE_TOKEN>" \
         -e "NGINX_AGENT_SERVER_HOST=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_FQDN_OR_IP>" \
         -e "NGINX_AGENT_SERVER_GRPCPORT=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_GRPC_PORT>" \
-        -e "NGINX_AGENT_SERVER_TOKEN=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_OPTIONAL_AUTHENTICATION_TOKEN>" \
+        -e "NGINX_AGENT_SERVER_TOKEN=<NGINX_ONE_CONSOLE_AUTHENTICATION_TOKEN>" \
         -e "NGINX_AGENT_INSTANCE_GROUP=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_OPTIONAL_INSTANCE_GROUP_OR_CONFIG_SYNC_GROUP_NAME>" \
         -e "NGINX_AGENT_TAGS=<OPTIONAL_COMMA_DELIMITED_TAG_LIST>" \
         -e "NAP_WAF=[true|false]" \
