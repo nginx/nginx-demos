@@ -1,11 +1,11 @@
-FROM ubuntu:22.04@sha256:1ec65b2719518e27d4d25f104d93f9fac60dc437f81452302406825c46fcc9cb
+FROM ubuntu:24.04@sha256:66460d557b25769b102175144d538d88219c077c678a49af4afca6fbfc1b5252
 
 ARG ADD_PUM
 
 # Initial setup
 RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y -q build-essential git nano curl jq wget gawk \
-		nginx lsb-release rsyslog systemd apt-transport-https ca-certificates netcat sudo && \
+		nginx lsb-release rsyslog systemd apt-transport-https ca-certificates netcat-traditional sudo && \
 	mkdir -p /etc/ssl/nginx /deployment
 
 COPY ./container/startNIM.sh /deployment/
