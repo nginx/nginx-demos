@@ -33,7 +33,7 @@ This repository has been tested with:
 
 The `./scripts/build.sh` install script can be used to build the Docker image:
 
-```
+```shell
 NGINX Docker Image builder
 
  This tool builds a Docker image to run NGINX Plus/Open Source, NGINX App Protect WAF and NGINX Agent
@@ -72,37 +72,45 @@ NGINX Docker Image builder
  ./scripts/build.sh -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2
 ```
 
+### Agent version compatibility
+
+When using NGINX Agent, you need to be mindful of compatibility with other NGINX Products. Review the [Agent compatibility list](https://docs.nginx.com/nginx-agent/technical-specifications/#nginx-agent-30-compatibility) for details.
+Based on the information in the compatibility matrix, set the `-a` option accordingly.
+
+## Steps
+
 1. Clone this repository
 2. For NGINX Plus only: get your license certificate and key
 3. Build the Docker image using `./scripts/build.sh`
 
 ### Running the docker image on Kubernetes
 
-1. Edit `manifests/1.nginx-nim.yaml` and specify the correct image by modifying the `image:` line, and set the following environment variables
-  - `NGINX_LICENSE` - NGINX R33+ JWT license token
-  - `NGINX_AGENT_SERVER_HOST` - NGINX Instance Manager / NGINX One Console hostname/IP address
-  - `NGINX_AGENT_SERVER_GRPCPORT` - NGINX Instance Manager / NGINX One Console gRPC port
-  - `NGINX_AGENT_SERVER_TOKEN` - NGINX Instance Manager / NGINX One Console authentication token
-  - `NGINX_AGENT_INSTANCE_GROUP` - instance group (NGINX Instance Manager) / config sync group (NGINX One Console) for the NGINX instance
-  - `NGINX_AGENT_TAGS` - comma separated list of tags for the NGINX instance
-  - `NAP_WAF` - set to `"true"` to enable NGINX App Protect WAF (docker image built using `-w`) - NGINX Plus only
-  - `NAP_WAF_PRECOMPILED_POLICIES` - set to `"true"` to enable NGINX App Protect WAF precompiled policies (docker image built using `-w`) - NGINX Plus only
-  - `NGINX_AGENT_LOG_LEVEL` - NGINX Agent loglevel, optional. If not specified defaults to `info`
+1. Edit `manifests/nginx-manifest.yaml` and specify the correct image by modifying the `image:` line, and set the following environment variables
 
-2. Deploy on Kubernetes using the example manifest `manifest/nginx-manifest.yaml`
+- `NGINX_LICENSE` - NGINX R33+ JWT license token
+- `NGINX_AGENT_SERVER_HOST` - NGINX Instance Manager / NGINX One Console hostname/IP address
+- `NGINX_AGENT_SERVER_GRPCPORT` - NGINX Instance Manager / NGINX One Console gRPC port
+- `NGINX_AGENT_SERVER_TOKEN` - NGINX One Console authentication token (not needed for NGINX Instance Manager)
+- `NGINX_AGENT_INSTANCE_GROUP` - instance group (NGINX Instance Manager) / config sync group (NGINX One Console) for the NGINX instance
+- `NGINX_AGENT_TAGS` - comma separated list of tags for the NGINX instance
+- `NAP_WAF` - set to `"true"` to enable NGINX App Protect WAF (docker image built using `-w`) - NGINX Plus only
+- `NAP_WAF_PRECOMPILED_POLICIES` - set to `"true"` to enable NGINX App Protect WAF precompiled policies (docker image built using `-w`) - NGINX Plus only
+- `NGINX_AGENT_LOG_LEVEL` - NGINX Agent loglevel, optional. If not specified defaults to `info`
 
-3. After startup the NGINX instance will register to NGINX Instance Manager / NGINX One console and will be displayed on the "instances" dashboard if the NGINX Agent has been build into the docker image
+1. Deploy on Kubernetes using the example manifest `manifest/nginx-manifest.yaml`
+
+1. After startup the NGINX instance will register to NGINX Instance Manager / NGINX One console and will be displayed on the "instances" dashboard if the NGINX Agent has been build into the docker image
 
 ### Running the docker image on Docker
 
 1. Start using
 
-```
+```shell
 docker run --rm --name nginx -p [PORT_TO_EXPOSE] \
         -e "NGINX_LICENSE=<NGINX_JWT_LICENSE_TOKEN>" \
         -e "NGINX_AGENT_SERVER_HOST=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_FQDN_OR_IP>" \
         -e "NGINX_AGENT_SERVER_GRPCPORT=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_GRPC_PORT>" \
-        -e "NGINX_AGENT_SERVER_TOKEN=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_OPTIONAL_AUTHENTICATION_TOKEN>" \
+        -e "NGINX_AGENT_SERVER_TOKEN=<NGINX_ONE_CONSOLE_AUTHENTICATION_TOKEN>" \
         -e "NGINX_AGENT_INSTANCE_GROUP=<NGINX_INSTANCE_MANAGER_OR_NGINX_ONE_CONSOLE_OPTIONAL_INSTANCE_GROUP_OR_CONFIG_SYNC_GROUP_NAME>" \
         -e "NGINX_AGENT_TAGS=<OPTIONAL_COMMA_DELIMITED_TAG_LIST>" \
         -e "NAP_WAF=[true|false]" \
@@ -111,4 +119,4 @@ docker run --rm --name nginx -p [PORT_TO_EXPOSE] \
         <NGINX_DOCKER_IMAGE_NAME:TAG>
 ```
 
-2. After startup the NGINX instance will register to NGINX Instance Manager / NGINX One Console and will be displayed on the "instances" dashboard if the NGINX Agent has been build into the docker image
+1. After startup the NGINX instance will register to NGINX Instance Manager / NGINX One Console and will be displayed on the "instances" dashboard if the NGINX Agent has been build into the docker image
