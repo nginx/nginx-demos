@@ -117,7 +117,7 @@ echo "=> Target docker image is $IMAGENAME"
 if ([ ! -z "${NAP_WAF}" ] && [ -z "${NGINX_OSS}" ])
 then
   echo "=> Building with F5 WAF for NGINX"
-  OPT_PLATFORM="--platform linux/amd64" # for F5 WAF for NGINX , which is only available for x86_64
+  OPT_PLATFORM="--platform linux/amd64" # for F5 WAF for NGINX, which is only available for x86_64
 fi
 
 if [ -z "${NGINX_OSS}" ]
