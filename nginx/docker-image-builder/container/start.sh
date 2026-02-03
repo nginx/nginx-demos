@@ -24,7 +24,7 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
         .nginx.config_reload_monitoring_period="1s" |
         .server.host=strenv(NGINX_AGENT_SERVER_HOST) |
         .server.grpcPort=strenv(NGINX_AGENT_SERVER_GRPCPORT) |
-        .tls.enable=strenv(NGINX_AGENT_TLS_ENABL) |
+        .tls.enable=strenv(NGINX_AGENT_TLS_ENABLE) |
         .tls.skip_verify=strenv(NGINX_AGENT_TLS_SKIP_VERIFY) |
         .tls.ca="" |
         .tls.cert="" |
