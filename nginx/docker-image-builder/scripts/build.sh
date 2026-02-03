@@ -3,7 +3,7 @@
 # https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-docker/#docker_plus
 
 BANNER="NGINX Docker Image builder\n\n
-This tool builds a Docker image to run NGINX Plus/Open Source, NGINX App Protect WAF and NGINX Agent\n\n
+This tool builds a Docker image to run NGINX Plus/Open Source, F5 WAF for NGINX and NGINX Agent\n\n
 === Usage:\n\n
 $0 [options]\n\n
 === Options:\n\n
@@ -11,7 +11,7 @@ $0 [options]\n\n
 -t [target image]\t- The Docker image to be created\n
 -C [file.crt]\t\t- Certificate to pull packages from the official NGINX repository\n
 -K [file.key]\t\t- Key to pull packages from the official NGINX repository\n
--w\t\t\t- Add NGINX App Protect WAF (requires NGINX Plus)\n
+-w\t\t\t- Add F5 WAF for NGINX (requires NGINX Plus)\n
 -O\t\t\t- Use NGINX Open Source instead of NGINX Plus\n
 -u\t\t\t- Build unprivileged image (only for NGINX Plus)\n
 -i [uid:gid]\t\t- Set NGINX UID and GID (only for unprivileged images)\n
@@ -20,13 +20,13 @@ $0 [options]\n\n
 NGINX Plus and NGINX Agent image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a 2\n\n
 
-NGINX Plus, NGINX App Protect WAF and NGINX Agent image:\n
+NGINX Plus, F5 WAF for NGINX and NGINX Agent image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a 2\n\n
 
-NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image:\n
+NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
 
-NGINX Plus, NGINX App Protect WAF and NGINX Agent unprivileged image, custom UID and GID:\n
+NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image, custom UID and GID:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2\n\n
 
 NGINX Opensource and NGINX Agent image:\n
@@ -116,8 +116,8 @@ echo "=> Target docker image is $IMAGENAME"
 
 if ([ ! -z "${NAP_WAF}" ] && [ -z "${NGINX_OSS}" ])
 then
-  echo "=> Building with NGINX App Protect WAF"
-  OPT_PLATFORM="--platform linux/amd64" # for NGINX App Protect WAF, which is only available for x86_64
+  echo "=> Building with F5 WAF for NGINX"
+  OPT_PLATFORM="--platform linux/amd64" # for F5 WAF for NGINX , which is only available for x86_64
 fi
 
 if [ -z "${NGINX_OSS}" ]

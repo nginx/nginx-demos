@@ -24,8 +24,8 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
         .nginx.config_reload_monitoring_period="1s" |
         .server.host=strenv(NGINX_AGENT_SERVER_HOST) |
         .server.grpcPort=strenv(NGINX_AGENT_SERVER_GRPCPORT) |
-        .tls.enable=true |
-        .tls.skip_verify=true |
+        .tls.enable=strenv(NGINX_AGENT_TLS_ENABL) |
+        .tls.skip_verify=strenv(NGINX_AGENT_TLS_SKIP_VERIFY) |
         .tls.ca="" |
         .tls.cert="" |
         .tls.key=""
@@ -37,6 +37,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
 
       if [[ ! -z "$NGINX_AGENT_TAGS" ]]; then
          PARM="${PARM} --tags $NGINX_AGENT_TAGS"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_ALLOWED_DIRECTORIES" ]]; then
+         PARM="${PARM} --config-dirs $NGINX_AGENT_ALLOWED_DIRECTORIES"
       fi
 
       if [[ ! -z "$NGINX_AGENT_SERVER_TOKEN" ]]; then
@@ -54,6 +58,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
     "v3")
       PARM="${PARM} --command-server-host ${NGINX_AGENT_SERVER_HOST} --command-server-port ${NGINX_AGENT_SERVER_GRPCPORT} --command-tls-skip-verify"
 
+      if [[ "$NGINX_AGENT_TLS_SKIP_VERIFY" == "true" ]]; then
+         PARM="${PARM} --command-tls-skip-verify"
+      fi
+
       if [[ ! -z "$NGINX_AGENT_INSTANCE_GROUP" ]]; then
          PARM="${PARM} --labels config-sync-group=${NGINX_AGENT_INSTANCE_GROUP}"
       fi
@@ -68,6 +76,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
 
       if [[ ! -z "$NGINX_AGENT_LOG_LEVEL" ]]; then
          PARM="${PARM} --log-level ${NGINX_AGENT_LOG_LEVEL}"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_ALLOWED_DIRECTORIES" ]]; then
+         PARM="${PARM} --allowed-directories $NGINX_AGENT_ALLOWED_DIRECTORIES"
       fi
     ;;
   esac
