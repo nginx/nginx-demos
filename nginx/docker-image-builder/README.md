@@ -26,7 +26,7 @@ This repository has been tested with:
 - NGINX Plus license
 - Access to either control plane:
   - [NGINX Instance Manager](https://docs.nginx.com/nginx-instance-manager/)
-  - [NGINX One Cloud Console](https://docs.nginx.com/nginx-one/)
+  - [NGINX One Console](https://docs.nginx.com/nginx-one-console/)
 - Docker/Docker-compose or Openshift/Kubernetes cluster
 
 ## Building the docker image
