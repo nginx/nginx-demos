@@ -56,20 +56,23 @@ NGINX Docker Image builder
 
  === Examples:
 
- NGINX Plus and NGINX Agent image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a 2
+ NGINX Plus and NGINX Agent v2 image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-agent-root -a 2
 
- NGINX Plus, F5 WAF for NGINX and NGINX Agent image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a 2
+ NGINX Plus and NGINX Agent v3 image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-agent-root -a 3
 
- NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2
+ NGINX Opensource and NGINX Agent v2 image:
+ ./scripts/build.sh -O -t nginx-docker:oss-root -a 2
 
- NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image, custom UID and GID:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2
+ NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -a 2
 
- NGINX Opensource and NGINX Agent image:
- ./scripts/build.sh -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2
+ NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -a 2
+
+ NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image, custom UID and GID:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2
 ```
 
 ### Agent version compatibility
@@ -91,12 +94,16 @@ Based on the information in the compatibility matrix, set the `-a` option accord
 - `NGINX_AGENT_ENABLED` - NGINX Agent enabled or not
 - `NGINX_AGENT_SERVER_HOST` - NGINX Instance Manager / NGINX One Console hostname/IP address
 - `NGINX_AGENT_SERVER_GRPCPORT` - NGINX Instance Manager / NGINX One Console gRPC port
+- `NGINX_AGENT_TLS_ENABLE` - Enable TLS to NGINX Instance Manage / NGINX One Console
+- `NGINX_AGENT_TLS_SKIP_VERIFY` - Allows/disallows self-signed certificates
 - `NGINX_AGENT_SERVER_TOKEN` - NGINX One Console authentication token (not needed for NGINX Instance Manager)
 - `NGINX_AGENT_INSTANCE_GROUP` - instance group (NGINX Instance Manager) / config sync group (NGINX One Console) for the NGINX instance
 - `NGINX_AGENT_TAGS` - comma separated list of tags for the NGINX instance
+- `NGINX_AGENT_LOG_LEVEL` - NGINX Agent loglevel, optional. If not specified defaults to `info`
+- `NGINX_AGENT_ALLOWED_DIRECTORIES` - Comma-separated list of paths granting read/write permissions for the agent
+- `NGINX_AGENT_FEATURES` - Enable/disable NGINX Agent features
 - `NAP_WAF` - set to `"true"` to enable F5 WAF for NGINX (docker image built using `-w`) - NGINX Plus only
 - `NAP_WAF_PRECOMPILED_POLICIES` - set to `"true"` to enable F5 WAF for NGINX precompiled policies (docker image built using `-w`) - NGINX Plus only
-- `NGINX_AGENT_LOG_LEVEL` - NGINX Agent loglevel, optional. If not specified defaults to `info`
 
 1. Deploy on Kubernetes using the example manifest `manifest/nginx-manifest.yaml`
 
