@@ -17,20 +17,23 @@ $0 [options]\n\n
 -i [uid:gid]\t\t- Set NGINX UID and GID (only for unprivileged images)\n
 -a [2|3]\t\t- Add NGINX Agent v2 or v3\n\n
 === Examples:\n\n
-NGINX Plus and NGINX Agent image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-agent-root -a 2\n\n
+NGINX Plus and NGINX Agent v2 image:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-agent-root -a 2\n\n
 
-NGINX Plus, F5 WAF for NGINX and NGINX Agent image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-root -w -a 2\n\n
+NGINX Plus and NGINX Agent v3 image:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-agent-root -a 3\n\n
 
-NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
+NGINX Opensource and NGINX Agent v2 image:\n
+  $0 -O -t nginx-docker:oss-root -a 2\n\n
 
-NGINX Plus, F5 WAF for NGINX and NGINX Agent unprivileged image, custom UID and GID:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t registry.ff.lan:31005/nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2\n\n
+NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 image:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -a 2\n\n
 
-NGINX Opensource and NGINX Agent image:\n
-  $0 -O -t registry.ff.lan:31005/nginx-docker:oss-root -a 2\n"
+NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
+
+NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image, custom UID and GID:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -i 1234:1234 -a 2\n"
 
 NGINX_UID=101
 NGINX_GID=101

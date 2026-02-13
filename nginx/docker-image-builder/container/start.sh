@@ -43,6 +43,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
          PARM="${PARM} --config-dirs $NGINX_AGENT_ALLOWED_DIRECTORIES"
       fi
 
+      if [[ ! -z "$NGINX_AGENT_FEATURES" ]]; then
+         PARM="${PARM} --features $NGINX_AGENT_FEATURES"
+      fi
+
       if [[ ! -z "$NGINX_AGENT_SERVER_TOKEN" ]]; then
         yq -i '
           .server.token=strenv(NGINX_AGENT_SERVER_TOKEN)
@@ -80,6 +84,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
 
       if [[ ! -z "$NGINX_AGENT_ALLOWED_DIRECTORIES" ]]; then
          PARM="${PARM} --allowed-directories $NGINX_AGENT_ALLOWED_DIRECTORIES"
+      fi
+
+      if [[ ! -z "$NGINX_AGENT_FEATURES" ]]; then
+         PARM="${PARM} --features $NGINX_AGENT_FEATURES"
       fi
     ;;
   esac
