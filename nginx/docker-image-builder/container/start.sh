@@ -10,9 +10,6 @@ if [[ ! -z "$NGINX_LICENSE" ]]; then
    echo ${NGINX_LICENSE} > /etc/nginx/license.jwt
 fi
 
-nginx
-sleep 2
-
 if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
   PARM=""
 
@@ -140,6 +137,9 @@ if [[ "$NAP_WAF_PRECOMPILED_POLICIES" == "true" ]]; then
 fi
 
 fi
+
+nginx
+sleep 2
 
 if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
   if [[ "$IS_UNPRIVILEGED" ]]; then
