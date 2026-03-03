@@ -1,0 +1,31 @@
+# ============================================================
+# Example: NGINX Plus only — no agent, no WAF
+# ============================================================
+# Usage:
+#   helm install nginx-plus ./nginx-plus \
+#     -f values-nginx-only.yaml \
+#     --set image.repository=registry.example.com/nginx-plus \
+#     --set image.tag=r33
+
+replicaCount: 1
+
+image:
+  repository: "registry.example.com/nginx-plus"
+  tag: "r33"
+
+agent:
+  enabled: false
+
+waf:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 80
+  apiPort: 8080
+
+autoscaling:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: false

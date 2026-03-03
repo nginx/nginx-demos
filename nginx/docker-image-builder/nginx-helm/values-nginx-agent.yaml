@@ -1,0 +1,48 @@
+# ============================================================
+# Example: NGINX Plus + NGINX Agent (NIM / NGINX One Console)
+# ============================================================
+# Usage:
+#   helm install nginx-plus ./nginx-plus \
+#     -f values-nginx-agent.yaml \
+#     --set image.repository=registry.example.com/nginx-plus \
+#     --set image.tag=r33 \
+#     --set agent.serverHost=nim.example.com \
+#     --set agent.serverToken=YOUR_TOKEN
+
+replicaCount: 1
+
+image:
+  repository: "registry.example.com/nginx-plus"
+  tag: "r33"
+
+agent:
+  enabled: true
+  serverHost: "nim.example.com"
+  serverGrpcPort: "443"
+  serverToken: ""              # set via --set or a Secret
+  tlsEnable: "true"
+  tlsSkipVerify: "false"
+  instanceGroup: "production"
+  # Agent v2 tag syntax
+  tags: "prod,us-east-1"
+  logLevel: "info"
+  allowedDirectories: "/etc/nginx:/usr/local/etc/nginx:/usr/share/nginx/modules:/etc/nms"
+  features: ""
+
+waf:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 80
+  apiPort: 8080
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

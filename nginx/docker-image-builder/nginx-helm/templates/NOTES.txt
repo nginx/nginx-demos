@@ -1,0 +1,61 @@
+========================================================
+  NGINX Plus — {{ .Chart.Name }} {{ .Chart.Version }}
+  Release   : {{ .Release.Name }}
+  Namespace : {{ .Release.Namespace }}
+========================================================
+
+🟢 Check pod status:
+
+  kubectl get pods -n {{ .Release.Namespace }} \
+    -l app.kubernetes.io/instance={{ .Release.Name }}
+
+📡 Service access:
+
+{{- if eq .Values.service.type "ClusterIP" }}
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ include "nginx-plus.fullname" . }} 8080:80
+
+  Then open: http://localhost:8080
+{{- else if eq .Values.service.type "NodePort" }}
+  export NODE_PORT=$(kubectl get svc {{ include "nginx-plus.fullname" . }} \
+    -n {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}")
+  export NODE_IP=$(kubectl get nodes \
+    -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "http://$NODE_IP:$NODE_PORT"
+{{- else if eq .Values.service.type "LoadBalancer" }}
+  kubectl get svc {{ include "nginx-plus.fullname" . }} \
+    -n {{ .Release.Namespace }} -w
+{{- end }}
+
+{{- if .Values.agent.enabled }}
+
+🔗 NGINX Agent:
+  Control Plane : {{ .Values.agent.serverHost }}:{{ .Values.agent.serverGrpcPort }}
+  TLS Enabled   : {{ .Values.agent.tlsEnable }}
+  Log Level     : {{ .Values.agent.logLevel }}
+  {{- if .Values.agent.instanceGroup }}
+  Instance Group: {{ .Values.agent.instanceGroup }}
+  {{- end }}
+  {{- if .Values.agent.tags }}
+  Tags          : {{ .Values.agent.tags }}
+  {{- end }}
+{{- end }}
+
+{{- if .Values.waf.enabled }}
+
+🛡️  NGINX App Protect WAF : ENABLED
+  Precompiled Policies   : {{ .Values.waf.precompiledPolicies }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+🌍 Ingress:
+  {{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+  {{- end }}
+{{- end }}
+
+{{- if .Values.autoscaling.enabled }}
+
+📈 HPA: min={{ .Values.autoscaling.minReplicas }} max={{ .Values.autoscaling.maxReplicas }}
+{{- end }}

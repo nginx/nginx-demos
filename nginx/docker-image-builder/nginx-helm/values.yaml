@@ -1,0 +1,238 @@
+# =============================================================================
+# NGINX Plus Helm Chart — values.yaml
+# =============================================================================
+# All environment variables mirror the nginx-demos docker-image-builder
+# manifest exactly:
+# https://raw.githubusercontent.com/nginx/nginx-demos/refs/heads/main/nginx/docker-image-builder/manifests/nginx-manifest.yaml
+# =============================================================================
+
+# -- Number of pod replicas
+replicaCount: 1
+
+# -----------------------------------------------------------------------------
+# Image
+# -----------------------------------------------------------------------------
+image:
+  # Registry/repository for your NGINX Plus image built with scripts/build.sh
+  repository: "registry.example.com/nginx-plus"
+  # Image tag — typically matches the NGINX Plus release, e.g. r33
+  tag: "r33"
+  pullPolicy: Always
+
+# -- One or more image pull secrets (names of existing k8s Secrets)
+imagePullSecrets: []
+# - name: myregistrykey
+
+# -----------------------------------------------------------------------------
+# NGINX_LICENSE
+# NGINX Plus R33+ JWT license token.
+# It is strongly recommended to store this in a Kubernetes Secret:
+#   kubectl create secret generic license-token \
+#     --from-file=license.jwt=<path-to-your-jwt> \
+#     --type=nginx.com/license -n <namespace>
+# -----------------------------------------------------------------------------
+license:
+  # Name of the existing Secret that holds the JWT
+  secretName: "license-token"
+  # Key within that Secret
+  secretKey: "license.jwt"
+
+# -----------------------------------------------------------------------------
+# NGINX Agent — env vars: NGINX_AGENT_*
+# Enable when your image was built with the NGINX Agent included.
+# -----------------------------------------------------------------------------
+agent:
+  # Controls NGINX_AGENT_ENABLED
+  enabled: false
+
+  # NGINX_AGENT_SERVER_HOST
+  # NGINX Instance Manager / NGINX One Console hostname or IP address
+  serverHost: ""
+
+  # NGINX_AGENT_SERVER_GRPCPORT
+  serverGrpcPort: "443"
+
+  # NGINX_AGENT_SERVER_TOKEN
+  # Authentication token for NIM / NGINX One Console
+  serverToken: ""
+
+  # NGINX_AGENT_TLS_ENABLE
+  tlsEnable: "true"
+
+  # NGINX_AGENT_TLS_SKIP_VERIFY
+  tlsSkipVerify: "false"
+
+  # NGINX_AGENT_INSTANCE_GROUP
+  # Instance Group (NIM) / Config Sync Group (NGINX One Console)
+  instanceGroup: ""
+
+  # NGINX_AGENT_TAGS
+  # Comma-separated tags for the NGINX instance.
+  # Agent v2 syntax: "preprod,devops"
+  # Agent v3 syntax: "tenant=preprod,subtenant=datacentre1"
+  tags: ""
+
+  # NGINX_AGENT_LOG_LEVEL
+  # Agent log level: trace | debug | info | warning | error
+  logLevel: "info"
+
+  # NGINX_AGENT_ALLOWED_DIRECTORIES
+  # Colon-separated list of directories the agent may manage
+  allowedDirectories: "/etc/nginx:/usr/local/etc/nginx:/usr/share/nginx/modules:/etc/nms"
+
+  # NGINX_AGENT_FEATURES
+  # Comma-separated list of features to enable.
+  # Agent v2 example: "registration,nginx-config-async,metrics,dataplane-status,process-watcher,file-watcher,activity-events,agent-api"
+  # Agent v3 example: "configuration,certificates,file-watcher,metrics,logs-nap"
+  features: ""
+
+# -----------------------------------------------------------------------------
+# NGINX App Protect WAF
+# NAP_WAF and NAP_WAF_PRECOMPILED_POLICIES
+# Only relevant when your image was built with WAF support.
+# -----------------------------------------------------------------------------
+waf:
+  # NAP_WAF — set to true to enable NGINX App Protect WAF
+  enabled: false
+
+  # NAP_WAF_PRECOMPILED_POLICIES — use precompiled WAF policies
+  precompiledPolicies: false
+
+# -----------------------------------------------------------------------------
+# Service
+# Mirrors the manifest: HTTP on 80, API/dashboard on 8080
+# -----------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  # HTTP port
+  port: 80
+  # API / NGINX Plus dashboard port
+  apiPort: 8080
+  # NodePort values (only used when type=NodePort)
+  nodePort: ""
+  nodePortApi: ""
+  annotations: {}
+  labels: {}
+
+# -----------------------------------------------------------------------------
+# Ingress
+# Mirrors the annotations from the manifest
+# -----------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    nginx.org/proxy-connect-timeout: "30s"
+    nginx.org/proxy-read-timeout: "20s"
+    nginx.org/client-max-body-size: "4m"
+    nginx.com/health-checks: "true"
+  hosts:
+    - host: nginx.yourdomain.tld
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: nginx-tls
+  #   hosts:
+  #     - nginx.yourdomain.tld
+
+# -----------------------------------------------------------------------------
+# ServiceAccount
+# -----------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+# -----------------------------------------------------------------------------
+# Pod settings
+# -----------------------------------------------------------------------------
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+
+containerSecurityContext:
+  # NGINX Plus (especially with NAP/Agent) requires root to create cache dirs
+  # under /var/cache/nginx and to bind to privileged ports.
+  # Set runAsNonRoot: true and a non-zero runAsUser only if your image
+  # is explicitly built to run unprivileged.
+  runAsUser: 0
+  allowPrivilegeEscalation: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -----------------------------------------------------------------------------
+# Probes
+# -----------------------------------------------------------------------------
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 12
+
+# -----------------------------------------------------------------------------
+# Autoscaling (HPA)
+# -----------------------------------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# -----------------------------------------------------------------------------
+# Pod Disruption Budget
+# -----------------------------------------------------------------------------
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# -----------------------------------------------------------------------------
+# Scheduling
+# -----------------------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+
+# -- Arbitrary extra env vars not covered by the schema above
+extraEnv: []
+# - name: MY_EXTRA_VAR
+#   value: "foo"
+
+# -- Override name / fullname
+nameOverride: ""
+fullnameOverride: ""
+
+commonLabels: {}
+commonAnnotations: {}
