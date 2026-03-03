@@ -86,7 +86,11 @@ Based on the information in the compatibility matrix, set the `-a` option accord
 2. For NGINX Plus only: get your license certificate and key
 3. Build the Docker image using `./scripts/build.sh`
 
-### Running the docker image on Kubernetes
+### Deploying the docker image using a Helm chart
+
+See the [NGINX Helm Chart](nginx-helm)
+
+### Deploying the docker image on Kubernetes through manifests
 
 1. Edit `manifests/nginx-manifest.yaml` and specify the correct image by modifying the `image:` line, and set the following environment variables
 
