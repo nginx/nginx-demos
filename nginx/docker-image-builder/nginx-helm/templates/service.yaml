@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nginx-plus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nginx-plus.labels" . | nindent 4 }}
+    {{- with .Values.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    - name: api
+      port: {{ .Values.service.apiPort }}
+      targetPort: api
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePortApi }}
+      nodePort: {{ .Values.service.nodePortApi }}
+      {{- end }}
+  selector:
+    {{- include "nginx-plus.selectorLabels" . | nindent 4 }}

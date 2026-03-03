@@ -1,0 +1,20 @@
+apiVersion: v2
+name: nginx-plus
+description: >
+  A production-grade Helm chart for NGINX Plus with optional NGINX Agent
+  (NIM / NGINX One Console) and NGINX App Protect WAF support.
+  Based on the nginx/nginx-demos docker-image-builder manifest.
+type: application
+version: 1.0.0
+appVersion: "r33"
+keywords:
+  - nginx
+  - nginx-plus
+  - nginx-agent
+  - nginx-app-protect
+  - waf
+  - nim
+home: https://github.com/nginx/nginx-demos
+maintainers:
+  - name: Platform Engineering
+    email: platform@example.com

@@ -1,0 +1,59 @@
+# ============================================================
+# Example: NGINX Plus + NGINX Agent + NGINX App Protect WAF
+# ============================================================
+# Usage:
+#   helm install nginx-plus ./nginx-plus \
+#     -f values-nginx-agent-waf.yaml \
+#     --set image.repository=registry.example.com/nginx-plus \
+#     --set image.tag=r33-nap \
+#     --set agent.serverHost=nim.example.com \
+#     --set agent.serverToken=YOUR_TOKEN
+
+replicaCount: 1
+
+image:
+  repository: "registry.example.com/nginx-plus"
+  # NAP-enabled images are typically tagged with a -nap suffix
+  tag: "r33-nap"
+
+agent:
+  enabled: true
+  serverHost: "nim.example.com"
+  serverGrpcPort: "443"
+  serverToken: ""
+  tlsEnable: "true"
+  tlsSkipVerify: "false"
+  instanceGroup: "production-waf"
+  # Agent v3 tag syntax
+  tags: "tenant=prod,subtenant=us-east-1"
+  logLevel: "info"
+  allowedDirectories: "/etc/nginx:/usr/local/etc/nginx:/usr/share/nginx/modules:/etc/nms"
+  features: ""
+
+waf:
+  enabled: true
+  precompiledPolicies: true
+
+# WAF workloads need more headroom
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  apiPort: 8080
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 65
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
