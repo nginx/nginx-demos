@@ -35,7 +35,8 @@ RUN --mount=type=secret,id=nginx-crt,dst=/etc/ssl/nginx/nginx-repo.crt,mode=0644
   && ln -sf /dev/stderr /var/log/nginx/error.log \
 # NGINX Agent
   && if [ "$NGINX_AGENT" = "true" ] ; then \
-  curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
+  groupadd -g 1001 nginx-agent \
+  && curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
   && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://packages.nginx.org/nginx-agent/debian/ `lsb_release -cs` agent" > /etc/apt/sources.list.d/nginx-agent.list \
   && apt-get -y update \
   && apt-get -y install nginx-agent=`apt-cache madison nginx-agent | grep "| $NGINX_AGENT_VERSION\." | awk '{print $3}' | head -n1` \
