@@ -2,15 +2,15 @@
 # Demo owners #
 ###############
 
-nginx/advanced-healthchecks @fabriziofiorucci
+nginx/advanced-healthchecks @aknot242 @fabriziofiorucci
 nginx/ai-proxy @pleshakov
 nginx/api-gateway @alessfg
-nginx/api-steering @fabriziofiorucci
-nginx/docker-image-builder @fabriziofiorucci
-nginx/multicloud-gateway @fabriziofiorucci
-nginx/soap-to-rest @fabriziofiorucci
+nginx/api-steering @aknot242 @fabriziofiorucci
+nginx/docker-image-builder @aknot242 @fabriziofiorucci
+nginx/multicloud-gateway @aknot242 @fabriziofiorucci
+nginx/soap-to-rest @aknot242 @fabriziofiorucci
 nginx-gateway-fabric/traffic-splitting @sjberman
 nginx-ingress-controller/ingress-deployment @nginx/demos
-nginx-instance-manager/docker-deployment @fabriziofiorucci
+nginx-instance-manager/docker-deployment @aknot242 @fabriziofiorucci
 nginx-workshops @nginx/demos
 * @nginx/demos
