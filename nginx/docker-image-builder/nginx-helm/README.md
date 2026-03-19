@@ -30,26 +30,28 @@ kubectl create secret generic license-token \
 
 ```bash
 # NGINX Plus only
-helm install nginx-plus ./nginx-plus \
+helm install nginx-plus . \
   -f values-nginx-only.yaml \
   --set image.repository=registry.example.com/nginx-plus \
   --set image.tag=r33
 
 # With NGINX Agent (NIM / NGINX One Console)
-helm install nginx-plus ./nginx-plus \
+helm install nginx-plus . \
   -f values-nginx-agent.yaml \
   --set image.repository=registry.example.com/nginx-plus \
   --set image.tag=r33 \
   --set agent.serverHost=nim.example.com \
-  --set agent.serverToken=YOUR_TOKEN
+  --set agent.serverToken=YOUR_TOKEN \
+  --set agent.tlsSkipVerify=true
 
 # With Agent + App Protect WAF
-helm install nginx-plus ./nginx-plus \
+helm install nginx-plus . \
   -f values-nginx-agent-waf.yaml \
   --set image.repository=registry.example.com/nginx-plus \
   --set image.tag=r33-nap \
   --set agent.serverHost=nim.example.com \
-  --set agent.serverToken=YOUR_TOKEN
+  --set agent.serverToken=YOUR_TOKEN \
+  --set agent.tlsSkipVerify=true
 ```
 
 ## Environment Variables Reference
