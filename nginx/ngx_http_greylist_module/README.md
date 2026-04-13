@@ -101,8 +101,8 @@ sudo nginx -t && sudo nginx -s reload
 ### Option B — Docker Compose
 
 ```bash
-git clone https://github.com/fabriziofiorucci/ngx_http_greylist_module
-cd ngx_http_greylist_module
+git clone https://github.com/nginx/nginx-demos
+cd nginx/ngx_http_greylist_module
 docker compose up --build
 ```
 
