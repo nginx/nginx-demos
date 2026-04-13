@@ -27,6 +27,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX API steering](nginx/api-steering/)|NGINX as an API gateway using an external data source for authentication, authorization and steering|@fabriziofiorucci|
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, F5 WAF for NGINX, NGINX Agent|@fabriziofiorucci|
 |[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
+|[NGINX greylist module](nginx/ngx_http_greylist_module/)|A native C dynamic module for open-source NGINX that provides pattern-based rate limiting with automatic client greylisting|@fabriziofiorucci|
 |[NGINX SOAP REST](nginx/soap-to-rest/)|Example NGINX configuration to translate between SOAP and REST|@fabriziofiorucci|
 
 ### NGINX Gateway Fabric (NGF)
