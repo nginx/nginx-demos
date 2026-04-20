@@ -28,6 +28,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, F5 WAF for NGINX, NGINX Agent|@fabriziofiorucci|
 |[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
 |[NGINX service discovery](nginx/nginx-service-discovery/)|Consul-compatible service discovery implemented with NGINX + njs|@fabriziofiorucci|
+|[NGINX greylist module](nginx/ngx_http_greylist_module/)|A native C dynamic module for open-source NGINX that provides pattern-based rate limiting with automatic client greylisting|@fabriziofiorucci|
 |[NGINX SOAP REST](nginx/soap-to-rest/)|Example NGINX configuration to translate between SOAP and REST|@fabriziofiorucci|
 
 ### NGINX Gateway Fabric (NGF)

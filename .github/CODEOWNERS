@@ -9,7 +9,7 @@ nginx/api-gateway @alessfg
 nginx/api-steering @aknot242 @fabriziofiorucci
 nginx/docker-image-builder @aknot242 @fabriziofiorucci
 nginx/multicloud-gateway @aknot242 @fabriziofiorucci
-nginx/nginx-service-discovery @aknot242 @fabriziofiorucci
+nginx/ngx_http_greylist_module @aknot242 @fabriziofiorucci
 nginx/soap-to-rest @aknot242 @fabriziofiorucci
 nginx-gateway-fabric/traffic-splitting @sjberman
 nginx-ingress-controller/ingress-deployment @nginx/demos
