@@ -12,13 +12,43 @@
 #define NGX_HTTP_TOO_MANY_REQUESTS 429
 #endif
 
-#define GL_FP_MAX      128
-#define GL_KEY_MAX     160
+/*
+ * GL_FP_MAX — fingerprint string buffer.
+ * Each source contributes "%08xD" (8 chars) for the first and "|%08xD"
+ * (9 chars) for every subsequent one.  256 bytes supports up to ~27 sources.
+ */
+#define GL_FP_MAX      256
+/*
+ * GL_KEY_MAX — shared-memory lookup key buffer.
+ * "GL:" or "RL:NN:" prefix (up to 7 bytes) + up to GL_FP_MAX fingerprint bytes.
+ */
+#define GL_KEY_MAX     264
 #define GL_MAX_RULES    64
 #define GL_CAP_SLOTS     3
 
 #define GL_TYPE_GL  0
 #define GL_TYPE_RL  1
+
+/* Source kinds for greylist_fingerprint_header */
+#define GL_FP_SRC_HEADER  0   /* header=<n>     — HTTP request header  */
+#define GL_FP_SRC_VAR     1   /* var=<$varname> — NGINX variable        */
+
+/*
+ * gl_fp_source_t — one fingerprint component.
+ *
+ * kind == GL_FP_SRC_HEADER:
+ *   name  = lower-cased header name
+ *   var_index is unused (-1)
+ *
+ * kind == GL_FP_SRC_VAR:
+ *   name      = variable name without '$' (for logging)
+ *   var_index = index resolved at config time via ngx_http_get_variable_index()
+ */
+typedef struct {
+    uint8_t    kind;
+    ngx_str_t  name;
+    ngx_int_t  var_index;
+} gl_fp_source_t;
 
 typedef struct {
     ngx_str_t     pattern_str;
@@ -59,6 +89,23 @@ typedef struct {
     ngx_shm_zone_t  *shm_zone;
     ngx_array_t     rules;
     ngx_uint_t      timeout;
+    /*
+     * fp_sources — ordered list of gl_fp_source_t entries defining what
+     * contributes to the client fingerprint.  Populated exclusively by
+     * greylist_fingerprint_header directives.  There are NO built-in
+     * components; the fingerprint is entirely operator-defined.
+     *
+     * Each source contributes one FNV-1a 32-bit hash segment:
+     *   first  source: "%08xD"   (8 hex chars)
+     *   further sources: "|%08xD" (9 chars each, pipe-separated)
+     *
+     * Example with two sources ($remote_addr and X-Device-Id header):
+     *   "c0a80101|deadbeef"
+     *
+     * When a header is absent or a variable is unset/empty, FNV("") =
+     * 811c9dc5 is contributed so the fingerprint length stays constant.
+     */
+    ngx_array_t     fp_sources;
 } gl_zone_t;
 
 typedef struct {
@@ -78,6 +125,8 @@ static ngx_int_t  gl_init(ngx_conf_t *cf);
 static char      *gl_zone_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char      *gl_rule_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char      *gl_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char      *gl_fingerprint_header_directive(ngx_conf_t *cf,
+                      ngx_command_t *cmd, void *conf);
 static ngx_int_t  gl_shm_init(ngx_shm_zone_t *shm_zone, void *data);
 static ngx_int_t  gl_handler(ngx_http_request_t *r);
 static gl_zone_t *gl_find_zone(gl_main_cf_t *mcf, ngx_str_t *name);
@@ -87,8 +136,11 @@ static gl_node_t *gl_lookup(gl_shm_t *sh, ngx_uint_t hash,
                       const u_char *key, uint8_t klen);
 static void       gl_expire(gl_zone_t *gz, ngx_uint_t n);
 static uint32_t   gl_fnv1a32(const u_char *data, size_t len);
-static size_t     gl_fingerprint(ngx_http_request_t *r, u_char *buf, size_t max);
-static size_t     gl_match_subject(ngx_http_request_t *r, u_char *buf, size_t max);
+static size_t     gl_fingerprint(ngx_http_request_t *r, gl_zone_t *gz,
+                      u_char *buf, size_t max);
+static ngx_str_t *gl_find_header(ngx_http_request_t *r, ngx_str_t *lc_name);
+static size_t     gl_match_subject(ngx_http_request_t *r, u_char *buf,
+                      size_t max);
 static ngx_int_t  gl_match_rule(ngx_http_request_t *r, gl_rule_t *rule,
                       u_char *sbuf, size_t slen);
 static ngx_int_t  gl_parse_rate(ngx_str_t *s, ngx_uint_t *out);
@@ -112,6 +164,34 @@ static ngx_command_t gl_commands[] = {
       | NGX_CONF_TAKE1,
       gl_directive,
       NGX_HTTP_LOC_CONF_OFFSET, 0, NULL },
+
+    /*
+     * greylist_fingerprint_header zone=<n> header=<Header-Name>
+     * greylist_fingerprint_header zone=<n> var=<$variable>
+     *
+     * Adds one source to the fingerprint for the named zone.  The directive
+     * is repeatable; each occurrence appends one source evaluated in order.
+     *
+     * Exactly one of header= or var= must be supplied per directive.
+     * Both parameters may not appear together.
+     *
+     * header=<n>
+     *   Hashes the value of the named HTTP request header.
+     *   The name is matched case-insensitively.
+     *   Example: header=X-Real-IP
+     *
+     * var=<$varname>
+     *   Hashes the value of the named NGINX variable.
+     *   The leading '$' is optional.
+     *   The variable index is resolved at config-parse time.
+     *   Example: var=$remote_addr
+     *
+     * Context: http
+     */
+    { ngx_string("greylist_fingerprint_header"),
+      NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE2,
+      gl_fingerprint_header_directive,
+      NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL },
 
     ngx_null_command
 };
@@ -140,35 +220,111 @@ gl_fnv1a32(const u_char *data, size_t len)
     return h;
 }
 
-/* ── fingerprint: IP|fnv32(UA)|fnv32(token) ──────────────────────────────── */
+/* ── header lookup ───────────────────────────────────────────────────────── */
 
-static size_t
-gl_fingerprint(ngx_http_request_t *r, u_char *buf, size_t max)
+/*
+ * gl_find_header — linear search through the incoming headers list.
+ * lc_name must already be lower-cased; nginx stores all incoming header
+ * names in lower-case, so a plain memcmp suffices.
+ * Returns a pointer to the value ngx_str_t, or NULL when absent.
+ */
+static ngx_str_t *
+gl_find_header(ngx_http_request_t *r, ngx_str_t *lc_name)
 {
-    u_char    *p;
-    uint32_t   ua_h, tok_h;
-    ngx_str_t  ua, auth, token;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *h;
+    ngx_uint_t        i;
 
-    ua = r->headers_in.user_agent
-         ? r->headers_in.user_agent->value
-         : (ngx_str_t) ngx_null_string;
+    part = &r->headers_in.headers.part;
+    h    = part->elts;
 
-    ngx_str_null(&token);
-    if (r->headers_in.authorization) {
-        auth = r->headers_in.authorization->value;
-        if (auth.len > 7
-            && ngx_strncasecmp(auth.data, (u_char *)"Bearer ", 7) == 0) {
-            token.data = auth.data + 7;
-            token.len  = auth.len  - 7;
-            while (token.len && token.data[0] == ' ')
-                { token.data++; token.len--; }
+    for (i = 0; /* void */; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) { break; }
+            part = part->next;
+            h    = part->elts;
+            i    = 0;
+        }
+        if (h[i].key.len == lc_name->len
+            && ngx_memcmp(h[i].key.data, lc_name->data, lc_name->len) == 0)
+        {
+            return &h[i].value;
+        }
+    }
+    return NULL;
+}
+
+/* ── fingerprint ─────────────────────────────────────────────────────────── */
+
+/*
+ * gl_fingerprint — build the client fingerprint string into buf.
+ *
+ * The fingerprint is entirely composed of the sources registered via
+ * greylist_fingerprint_header directives — there are NO built-in
+ * components.  The operator has full control and can use any combination
+ * of HTTP request headers and NGINX variables.
+ *
+ * Each source contributes one FNV-1a 32-bit hash segment:
+ *   first  source: "%08xD"    (8 hex chars)
+ *   further sources: "|%08xD" (9 chars each, pipe-separated)
+ *
+ * When a header is absent or a variable is unset/empty, FNV("") = 811c9dc5
+ * is contributed so fingerprint length is constant for a given zone config.
+ *
+ * Returns 0 when no sources are configured (caller must check and log).
+ */
+static size_t
+gl_fingerprint(ngx_http_request_t *r, gl_zone_t *gz, u_char *buf, size_t max)
+{
+    gl_fp_source_t            *sources;
+    ngx_uint_t                 i;
+    u_char                    *p;
+    uint32_t                   h;
+    ngx_str_t                 *hval;
+    ngx_http_variable_value_t *vval;
+
+    if (gz->fp_sources.nelts == 0) {
+        return 0;
+    }
+
+    sources = gz->fp_sources.elts;
+    p       = buf;
+
+    for (i = 0; i < gz->fp_sources.nelts; i++) {
+        /* 8 bytes for first segment, 9 for each subsequent (| + 8 hex) */
+        if (i == 0) {
+            if (max < 8) { break; }
+        } else {
+            if ((size_t)(p - buf) + 9 >= max) { break; }
+        }
+
+        switch (sources[i].kind) {
+
+        case GL_FP_SRC_HEADER:
+            hval = gl_find_header(r, &sources[i].name);
+            h    = hval ? gl_fnv1a32(hval->data, hval->len)
+                        : gl_fnv1a32(NULL, 0);
+            break;
+
+        case GL_FP_SRC_VAR:
+            vval = ngx_http_get_flushed_variable(r, sources[i].var_index);
+            h    = (vval && !vval->not_found && vval->len > 0)
+                   ? gl_fnv1a32((u_char *) vval->data, vval->len)
+                   : gl_fnv1a32(NULL, 0);
+            break;
+
+        default:
+            h = gl_fnv1a32(NULL, 0);
+            break;
+        }
+
+        if (i == 0) {
+            p = ngx_snprintf(buf, max, "%08xD", h);
+        } else {
+            p = ngx_snprintf(p, max - (size_t)(p - buf), "|%08xD", h);
         }
     }
 
-    ua_h  = gl_fnv1a32(ua.data,    ua.len);
-    tok_h = gl_fnv1a32(token.data, token.len);
-    p = ngx_snprintf(buf, max, "%V|%08xD|%08xD",
-                     &r->connection->addr_text, ua_h, tok_h);
     return (size_t)(p - buf);
 }
 
@@ -208,11 +364,6 @@ gl_match_rule(ngx_http_request_t *r, gl_rule_t *rule,
         subject.data = sbuf;
         subject.len  = slen;
 
-        /*
-         * ngx_regex_exec uses the same PCRE/PCRE2 instance nginx was
-         * compiled against — no cross-library ABI issues.
-         * Returns >= 0 on match, NGX_REGEX_NO_MATCHED (-1) on no match.
-         */
         rc = ngx_regex_exec(rule->regex, &subject, captures, GL_CAP_SLOTS);
 
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
@@ -359,8 +510,20 @@ gl_handler(ngx_http_request_t *r)
     sh    = gz->sh;
     rules = gz->rules.elts;
 
-    fp_len = gl_fingerprint(r, fp, sizeof(fp));
-    slen   = gl_match_subject(r, sbuf, sizeof(sbuf));
+    fp_len = gl_fingerprint(r, gz, fp, sizeof(fp));
+    if (fp_len == 0) {
+        /*
+         * No fingerprint sources configured.  gl_init already emitted a
+         * WARN at startup; fail open here rather than blocking all clients
+         * with the same empty fingerprint.
+         */
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            "greylist: zone \"%V\" has no fingerprint sources, skipping",
+            &gz->name);
+        return NGX_DECLINED;
+    }
+
+    slen = gl_match_subject(r, sbuf, sizeof(sbuf));
 
     gl_key[0] = 'G'; gl_key[1] = 'L'; gl_key[2] = ':';
     ngx_memcpy(gl_key + 3, fp, fp_len);
@@ -627,6 +790,10 @@ gl_zone_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_array_init(&zone->rules, cf->pool, 4, sizeof(gl_rule_t)) != NGX_OK)
         return NGX_CONF_ERROR;
 
+    if (ngx_array_init(&zone->fp_sources, cf->pool, 4,
+                       sizeof(gl_fp_source_t)) != NGX_OK)
+        return NGX_CONF_ERROR;
+
     shm = ngx_shared_memory_add(cf, &value[1], (size_t) size,
                                 &ngx_http_greylist_module);
     if (!shm) return NGX_CONF_ERROR;
@@ -664,12 +831,6 @@ gl_rule_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             pattern.data = value[i].data + 8;
             pattern.len  = value[i].len  - 8;
 
-            /*
-             * nginx does NOT strip quotes from a token that does not
-             * itself start with '"'.  The token "pattern=..." starts
-             * with 'p', so quotes around the value remain verbatim.
-             * Strip them here.
-             */
             if (pattern.len >= 2
                 && pattern.data[0] == '"'
                 && pattern.data[pattern.len - 1] == '"')
@@ -784,6 +945,146 @@ gl_rule_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+/*
+ * gl_fingerprint_header_directive
+ *
+ * Syntax:
+ *   greylist_fingerprint_header zone=<n> header=<Header-Name>
+ *   greylist_fingerprint_header zone=<n> var=<$varname>
+ *
+ * Adds one fingerprint source to the named zone.  Exactly one of header=
+ * or var= must appear; they are mutually exclusive per directive.
+ *
+ * header=<n>
+ *   The name is stored lower-cased.  nginx lowercases incoming header names
+ *   during parsing, so a plain memcmp in gl_find_header is sufficient for
+ *   case-insensitive matching at request time.
+ *
+ * var=<$varname>
+ *   The leading '$' is optional.  The variable index is resolved immediately
+ *   via ngx_http_get_variable_index() so that ngx_http_get_flushed_variable()
+ *   can be used cheaply at request time (no name lookup on the hot path).
+ */
+static char *
+gl_fingerprint_header_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    gl_main_cf_t   *mcf   = conf;
+    ngx_str_t      *value = cf->args->elts;
+    gl_zone_t      *zone;
+    gl_fp_source_t *src;
+    ngx_str_t       zone_name, raw_value;
+    uint8_t         kind;
+    ngx_uint_t      i, j;
+    ngx_int_t       idx;
+
+    ngx_str_null(&zone_name);
+    ngx_str_null(&raw_value);
+    kind = 0xff;   /* sentinel: not yet set */
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "zone=", 5) == 0) {
+            zone_name.data = value[i].data + 5;
+            zone_name.len  = value[i].len  - 5;
+
+        } else if (ngx_strncmp(value[i].data, "header=", 7) == 0) {
+            if (kind != 0xff) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "greylist_fingerprint_header: "
+                    "header= and var= are mutually exclusive");
+                return NGX_CONF_ERROR;
+            }
+            kind           = GL_FP_SRC_HEADER;
+            raw_value.data = value[i].data + 7;
+            raw_value.len  = value[i].len  - 7;
+
+        } else if (ngx_strncmp(value[i].data, "var=", 4) == 0) {
+            if (kind != 0xff) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "greylist_fingerprint_header: "
+                    "header= and var= are mutually exclusive");
+                return NGX_CONF_ERROR;
+            }
+            kind           = GL_FP_SRC_VAR;
+            raw_value.data = value[i].data + 4;
+            raw_value.len  = value[i].len  - 4;
+
+            /* strip optional leading '$' */
+            if (raw_value.len > 0 && raw_value.data[0] == '$') {
+                raw_value.data++;
+                raw_value.len--;
+            }
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "greylist_fingerprint_header: unknown parameter \"%V\"",
+                &value[i]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (!zone_name.len) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "greylist_fingerprint_header: zone= is required");
+        return NGX_CONF_ERROR;
+    }
+
+    if (kind == 0xff || raw_value.len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "greylist_fingerprint_header: "
+            "one of header=<n> or var=<$varname> is required");
+        return NGX_CONF_ERROR;
+    }
+
+    zone = gl_find_zone(mcf, &zone_name);
+    if (!zone) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "greylist_fingerprint_header: zone \"%V\" not found "
+            "(define it first with greylist_zone)", &zone_name);
+        return NGX_CONF_ERROR;
+    }
+
+    src = ngx_array_push(&zone->fp_sources);
+    if (!src) { return NGX_CONF_ERROR; }
+    ngx_memzero(src, sizeof(*src));
+
+    src->kind      = kind;
+    src->var_index = -1;
+
+    if (kind == GL_FP_SRC_HEADER) {
+        /* lower-case the header name for fast memcmp at request time */
+        src->name.data = ngx_pnalloc(cf->pool, raw_value.len);
+        if (!src->name.data) { return NGX_CONF_ERROR; }
+        src->name.len = raw_value.len;
+        for (j = 0; j < raw_value.len; j++) {
+            src->name.data[j] = ngx_tolower(raw_value.data[j]);
+        }
+
+        ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+            "greylist_fingerprint_header: zone \"%V\" +header \"%V\"",
+            &zone_name, &src->name);
+
+    } else {
+        /* GL_FP_SRC_VAR: resolve the variable index at config-parse time */
+        src->name = raw_value;   /* store name without '$' (for logging) */
+
+        idx = ngx_http_get_variable_index(cf, &src->name);
+        if (idx == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "greylist_fingerprint_header: "
+                "failed to register variable \"$%V\"", &src->name);
+            return NGX_CONF_ERROR;
+        }
+        src->var_index = idx;
+
+        ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+            "greylist_fingerprint_header: zone \"%V\" +var \"$%V\" (idx=%i)",
+            &zone_name, &src->name, idx);
+    }
+
+    return NGX_CONF_OK;
+}
+
 static char *
 gl_directive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -862,13 +1163,38 @@ gl_merge_loc_cf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
+/*
+ * gl_init — postconfiguration.
+ *
+ * Registers the access-phase handler.  Also warns at startup for any zone
+ * that has no fingerprint sources, so operators discover the misconfiguration
+ * at load time rather than getting silent broken behaviour at runtime.
+ */
 static ngx_int_t
 gl_init(ngx_conf_t *cf)
 {
-    ngx_http_core_main_conf_t *cmcf =
-        ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-    ngx_http_handler_pt *h =
-        ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
+    ngx_http_core_main_conf_t *cmcf;
+    ngx_http_handler_pt       *h;
+    gl_main_cf_t              *mcf;
+    gl_zone_t                 *zones;
+    ngx_uint_t                 i;
+
+    mcf   = ngx_http_conf_get_module_main_conf(cf, ngx_http_greylist_module);
+    zones = mcf->zones.elts;
+
+    for (i = 0; i < mcf->zones.nelts; i++) {
+        if (zones[i].fp_sources.nelts == 0) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                "greylist: zone \"%V\" has no fingerprint sources configured; "
+                "all requests will be passed through unchecked. "
+                "Add greylist_fingerprint_header directives, e.g.: "
+                "greylist_fingerprint_header zone=%V var=$remote_addr;",
+                &zones[i].name, &zones[i].name);
+        }
+    }
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    h    = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
     if (!h) return NGX_ERROR;
     *h = gl_handler;
     return NGX_OK;
