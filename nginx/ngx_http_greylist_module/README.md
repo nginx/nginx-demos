@@ -3,10 +3,6 @@
 A **native C dynamic module** for open-source NGINX that provides
 pattern-based rate limiting with automatic client greylisting.
 
-A full reimplementation of
-[fabriziofiorucci/NGINX-Greylist](https://github.com/fabriziofiorucci/NGINX-Greylist)
-that requires **no NGINX Plus**, no NJS, and no `keyval_zone`.
-
 ## How it works
 
 ```
@@ -17,7 +13,9 @@ that requires **no NGINX Plus**, no NJS, and no `keyval_zone`.
   │  ACCESS phase  (ngx_http_greylist_module)              │
   │                                                        │
   │  1. Compute fingerprint                                │
-  │     IP | FNV32(User-Agent) | FNV32(Bearer-token)       │
+  │     Concatenation of FNV32 hashes of each source       │
+  │     defined by greylist_fingerprint_header directives  │
+  │     (HTTP headers and/or NGINX variables)              │
   │                │                                       │
   │  2. Lookup fingerprint in greylist                     │
   │     (shared-memory red-black tree)                     │
@@ -41,20 +39,6 @@ that requires **no NGINX Plus**, no NJS, and no `keyval_zone`.
   proxy_pass → upstream
 ```
 
-## Feature parity with the original
-
-| Original (NGINX Plus + NJS)         | This module (open-source NGINX)         |
-|-------------------------------------|-----------------------------------------|
-| `keyval_zone` shared memory         | Slab-allocated shared memory + rbtree   |
-| NJS `clientFingerprint()` (FNV-1a)  | Identical FNV-1a 32-bit hash in C       |
-| `auth_request` greylist check       | Inline ACCESS phase — no subrequest     |
-| NJS `addToGreylist()` on 429        | Same phase, zero overhead               |
-| NJS `denyGreylisted()` response     | `Retry-After` + `X-Greylisted` headers  |
-| `keyval_zone timeout=` (LRU / GC)   | LRU queue + configurable GC timeout     |
-| `limit_req_zone` leaky bucket       | Same algorithm, implemented in C        |
-| NGINX Plus R24+ required            | Open-source NGINX ≥ 1.9.11              |
-| NJS module required                 | No extra modules needed                 |
-
 ## Requirements
 
 | Requirement | Version |
@@ -63,7 +47,7 @@ that requires **no NGINX Plus**, no NJS, and no `keyval_zone`.
 | PCRE or PCRE2 | bundled with most distros |
 | OpenSSL | only if using HTTPS |
 
-> **NGINX Plus is not required.**  
+> **NGINX Plus is not required.**
 > NJS is not required.
 
 ## Installation
@@ -84,7 +68,7 @@ cd nginx-${NGINX_VER}
     --with-compat          \
     --with-http_ssl_module \
     --with-http_v2_module  \
-    --add-dynamic-module=/path/to/nginx-greylist-module
+    --add-dynamic-module=../nginx-demos/nginx/ngx_http_greylist_module
 make modules -j$(nproc)
 
 # 4. Install
@@ -122,7 +106,13 @@ http {
     # 2. Create a shared-memory zone
     greylist_zone  gl  16m  timeout=3600s;
 
-    # 3. Define rate-limit rules
+    # 3. Define what makes up the client fingerprint for this zone.
+    #    There are no built-in components — you choose exactly what to hash.
+    #    Use var= for NGINX variables and header= for HTTP request headers.
+    greylist_fingerprint_header zone=gl var=$remote_addr;
+    greylist_fingerprint_header zone=gl var=$http_user_agent;
+
+    # 4. Define rate-limit rules
     greylist_rule  zone=gl
                    pattern="~*^POST:https?://[^/]+/auth/login"
                    rate=5r/s
@@ -139,7 +129,7 @@ http {
         listen 80;
 
         location / {
-            # 4. Enable enforcement
+            # 5. Enable enforcement
             greylist zone=gl;
             proxy_pass http://backend;
         }
@@ -152,7 +142,7 @@ http {
 ### `greylist_zone`
 
 ```
-Syntax:   greylist_zone <name> <size> [timeout=<N>[s]];
+Syntax:   greylist_zone <n> <size> [timeout=<N>[s]];
 Context:  http
 ```
 
@@ -161,14 +151,16 @@ rate-limit token buckets.
 
 | Parameter | Description |
 |---|---|
-| `name` | Identifier used by `greylist_rule` and `greylist` |
+| `name` | Identifier used by `greylist_rule`, `greylist`, and `greylist_fingerprint_header` |
 | `size` | Shared memory size — e.g. `16m`. 1 MB ≈ 6 000 entries |
 | `timeout` | Hard GC age for LRU entries (default `3600s`). Set this to at least your longest `duration=` value |
+
+---
 
 ### `greylist_rule`
 
 ```
-Syntax:   greylist_rule zone=<name>
+Syntax:   greylist_rule zone=<n>
                         pattern="[~[*]]<string>"
                         rate=<N>r/[sm]
                         burst=<N>
@@ -209,32 +201,151 @@ For example: `POST:https://api.example.com/auth/login`
 > nginx keeps the surrounding `"` when the token starts with `p`; the
 > module strips them automatically.
 
-Common pattern examples:
-
-```nginx
-# Match any host
-pattern="~*^POST:https?://[^/]+/auth/login"
-
-# Match a specific host
-pattern="~*^POST:https?://api\.example\.com/auth/login"
-
-# Match multiple methods
-pattern="~*^(POST|PUT):https?://[^/]+/api/items"
-
-# Exact match (no regex)
-pattern="GET:http://localhost/healthz"
-```
+---
 
 ### `greylist`
 
 ```
-Syntax:   greylist zone=<name>;
+Syntax:   greylist zone=<n>;
 Context:  http, server, location
 ```
 
-Enables the greylist access check in the current context. The `greylist`
-directive can appear in an included file even when `greylist_zone` is
-defined in the outer `nginx.conf` — directive order does not matter.
+Enables the greylist access check in the current context.
+
+---
+
+### `greylist_fingerprint_header`
+
+```
+Syntax:   greylist_fingerprint_header zone=<n> header=<Header-Name>;
+          greylist_fingerprint_header zone=<n> var=<$variable>;
+Context:  http
+```
+
+Adds one source to the client fingerprint for the named zone. The directive
+is **repeatable** — each occurrence appends one more source, evaluated in
+declaration order.
+
+**There are no built-in fingerprint components.** The fingerprint is
+entirely operator-defined through these directives. A zone with no
+`greylist_fingerprint_header` directives will emit a startup `WARN` and
+pass all requests through unchecked.
+
+#### Parameters
+
+Exactly one of `header=` or `var=` must be given per directive. They are
+mutually exclusive.
+
+| Parameter | Description |
+|---|---|
+| `zone=<n>` | Zone to attach this source to (required) |
+| `header=<n>` | Value of the named HTTP **request** header |
+| `var=<$varname>` | Value of the named NGINX **variable** (leading `$` is optional) |
+
+#### How the fingerprint is built
+
+Each source contributes one FNV-1a 32-bit hash segment to the fingerprint
+string. Segments are pipe-separated:
+
+```
+<hash0>|<hash1>|<hash2>...
+```
+
+For example, with `var=$remote_addr` and `header=X-Device-Id`:
+
+```
+c0a80101|deadbeef
+```
+
+When a header is absent or a variable is unset/empty, the FNV hash of the
+empty string (`811c9dc5`) is contributed — the fingerprint length stays
+constant regardless of whether optional headers are present.
+
+#### `header=` sources
+
+The header name is matched **case-insensitively**. Both of the following
+are equivalent:
+
+```nginx
+greylist_fingerprint_header zone=gl header=X-Real-IP;
+greylist_fingerprint_header zone=gl header=x-real-ip;
+```
+
+> **Security note:** because HTTP headers are controlled by the client or
+> an upstream proxy, only include headers that are set or overwritten by
+> a trusted proxy. Never use a header that end-users can forge.
+
+#### `var=` sources
+
+Any NGINX variable can be used — built-in variables, variables set by
+`set`, `map`, `geo`, `geoip`, `realip`, etc.
+
+```nginx
+greylist_fingerprint_header zone=gl var=$remote_addr;
+greylist_fingerprint_header zone=gl var=$binary_remote_addr;
+greylist_fingerprint_header zone=gl var=$http_user_agent;
+greylist_fingerprint_header zone=gl var=$ssl_client_fingerprint;
+```
+
+The leading `$` is optional: `var=remote_addr` and `var=$remote_addr` are
+equivalent.
+
+Variable indices are resolved at **config-parse time** via
+`ngx_http_get_variable_index()` so there is no name lookup on the request
+hot path.
+
+#### Examples
+
+**Replicate the original NJS fingerprint** (IP + User-Agent + Bearer token)
+using variables:
+
+```nginx
+greylist_fingerprint_header zone=gl var=$remote_addr;
+greylist_fingerprint_header zone=gl var=$http_user_agent;
+greylist_fingerprint_header zone=gl var=$http_authorization;
+```
+
+**Behind a reverse proxy** — use the real client IP from the proxy header,
+plus User-Agent:
+
+```nginx
+greylist_fingerprint_header zone=gl header=X-Real-IP;
+greylist_fingerprint_header zone=gl var=$http_user_agent;
+```
+
+**Per-device tracking** — add a device identity header:
+
+```nginx
+greylist_fingerprint_header zone=gl var=$remote_addr;
+greylist_fingerprint_header zone=gl header=X-Device-Id;
+```
+
+**API key only** — track entirely by API key, ignoring IP:
+
+```nginx
+greylist_fingerprint_header zone=gl header=X-Api-Key;
+```
+
+**mTLS deployment** — fingerprint on the client TLS certificate:
+
+```nginx
+greylist_fingerprint_header zone=gl var=$ssl_client_fingerprint;
+```
+
+**Combine multiple zones** — each zone has an independent fingerprint:
+
+```nginx
+greylist_zone  api  16m;
+greylist_zone  web  8m;
+
+# API zone: IP + API key
+greylist_fingerprint_header zone=api var=$remote_addr;
+greylist_fingerprint_header zone=api header=X-Api-Key;
+
+# Web zone: IP + User-Agent
+greylist_fingerprint_header zone=web var=$remote_addr;
+greylist_fingerprint_header zone=web var=$http_user_agent;
+```
 
 ## Response headers
 
@@ -257,29 +368,34 @@ location @greylisted {
 
 ## Client fingerprint
 
-Each client is identified by a fingerprint string:
+The fingerprint is a pipe-separated string of FNV-1a 32-bit hash segments,
+one per configured `greylist_fingerprint_header` source:
 
 ```
-<IP>|<fnv32hex(User-Agent)>|<fnv32hex(Bearer-token)>
+<fnv32hex(source-0)>|<fnv32hex(source-1)>|...
 ```
 
-Examples:
-```
-10.0.0.5|a1b2c3d4|00000000          # no auth token
-10.0.0.5|a1b2c3d4|cafebabe          # with bearer token
-2001:db8::1|deadbeef|cafebabe       # IPv6
+There are **no built-in components**. If you want the behaviour of the
+original NJS `clientFingerprint()` function (IP | FNV32(UA) | FNV32(Bearer)),
+configure it explicitly:
+
+```nginx
+greylist_fingerprint_header zone=gl var=$remote_addr;
+greylist_fingerprint_header zone=gl var=$http_user_agent;
+greylist_fingerprint_header zone=gl var=$http_authorization;
 ```
 
-This is identical to the `clientFingerprint()` function in the original
-NJS implementation:
+### Fingerprint format
 
-- IP is kept raw for auditability.
-- User-Agent and Bearer token are hashed with FNV-1a 32-bit to bound key
-  length regardless of how long those strings are.
-- Clients behind the same NAT IP but with different User-Agents or tokens
-  are tracked independently.
-- Unauthenticated clients are fingerprinted by IP + UA only (token hash
-  of `""` = `811c9dc5`).
+| Sources configured | Example fingerprint |
+|---|---|
+| `var=$remote_addr` | `c0a80101` |
+| `var=$remote_addr` + `var=$http_user_agent` | `c0a80101\|a1b2c3d4` |
+| `header=X-Api-Key` | `cafebabe` |
+| `var=$remote_addr` + `header=X-Device-Id` | `c0a80101\|deadbeef` |
+
+When a source is absent (header missing, variable unset), FNV(`""`) =
+`811c9dc5` is contributed.
 
 ## Auto-expiry
 
@@ -333,8 +449,7 @@ for every request in any location that has `greylist zone=gl;`.
 
 Greylist entries are stored in shared memory and survive a graceful
 `nginx -s reload`. Workers pick up the new configuration while the
-existing greylist remains intact — equivalent to `keyval_zone state=`
-persistence in the original.
+existing greylist remains intact.
 
 ### OOM behaviour
 
@@ -346,6 +461,13 @@ prevents a memory exhaustion from becoming a service outage.
 
 All shared-memory access is protected by `ngx_shmtx_lock`. PCRE matching
 is performed *outside* the mutex (PCRE is not reentrant under a lock).
+
+### Zones with no fingerprint sources
+
+If a zone has no `greylist_fingerprint_header` directives, NGINX will emit
+a `WARN` at startup and all requests to that zone will be passed through
+unchecked. This is a fail-open safety measure — add at least one
+`greylist_fingerprint_header` directive to enable enforcement.
 
 ## Logging
 
@@ -359,15 +481,19 @@ error_log /var/log/nginx/error.log warn;
 Typical entries:
 
 ```
+# Fingerprint source registered at startup
+greylist_fingerprint_header: zone "gl" +var "$remote_addr" (idx=0)
+greylist_fingerprint_header: zone "gl" +header "x-device-id"
+
 # Rule matched but within rate limit
 greylist: RL rule=0 excess=500 burst=5000 — pass
 
 # Rate limit exceeded, client greylisted
 greylist: RL rule=0 excess=6000 burst=5000 — BLOCK
-greylist: GREYLISTED fp="10.0.0.5|a1b2c3d4|00000000" rule=0 duration=120s
+greylist: GREYLISTED fp="c0a80101|a1b2c3d4" rule=0 duration=120s
 
 # Subsequent requests from same client
-greylist: BLOCKED fp="10.0.0.5|a1b2c3d4|00000000" retry_after=118s
+greylist: BLOCKED fp="c0a80101|a1b2c3d4" retry_after=118s
 ```
 
 ## Troubleshooting
@@ -376,9 +502,11 @@ greylist: BLOCKED fp="10.0.0.5|a1b2c3d4|00000000" retry_after=118s
 |---|---|---|
 | `unknown directive "greylist_zone"` | Module not loaded | Add `load_module modules/ngx_http_greylist_module.so;` before `http{}` |
 | `nginx: [emerg] module ... is not binary compatible` | Module built against wrong nginx version | Rebuild against the exact version from `nginx -v` |
+| All requests pass (no 429) | No fingerprint sources configured | Add `greylist_fingerprint_header` directives for the zone |
 | All requests pass (no 429) | Pattern does not match | Check the `subject=` in warn logs vs your pattern |
-| Pattern never matches | Quotes not stripped or regex typo | Verify pattern with `error_log ... warn;` — logged as `regex "..." vs "..."` |
-| `greylist_rule: zone "X" not found` | Rule defined before zone | Move `greylist_zone` before `greylist_rule`, or just reload (lookup is deferred) |
+| `greylist_fingerprint_header: header= and var= are mutually exclusive` | Both parameters on one line | Use one directive per source |
+| `greylist_fingerprint_header: zone "X" not found` | Zone not yet defined | Move `greylist_zone` before `greylist_fingerprint_header` |
+| `greylist_rule: zone "X" not found` | Rule defined before zone | Move `greylist_zone` first, or just reload (lookup is deferred) |
 | Zone OOM | `size` too small | Increase `greylist_zone` size or decrease `timeout=` |
 
 ### Pattern debugging checklist
@@ -391,15 +519,6 @@ POST:https://api.example.com/auth/login   ← HTTPS
 GET:http://127.0.0.1/api/search?q=foo
 DELETE:https://api.example.com/api/admin/users
 ```
-
-Common regex mistakes:
-
-| Wrong | Right | Issue |
-|---|---|---|
-| `http?://` | `https?://` | `?` makes `p` optional, not `s` |
-| `[^/]` | `[^/]+` | matches exactly 1 char, not the whole hostname |
-| `https://` | `https?://` | doesn't match plain HTTP |
-| `pattern=~*^POST` | `pattern="~*^POST"` | must quote the value |
 
 ## Testing
 
@@ -418,7 +537,6 @@ for i in $(seq 1 10); do
     http://localhost/auth/login
 done
 # Expected: 200 200 200 200 200 200 429 429 429 429
-#           (6th request exceeds burst=5, gets greylisted)
 
 # Check the Retry-After header
 curl -si -X POST -H "User-Agent: TestClient/1.0" \
@@ -456,6 +574,3 @@ sends.
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).
-
-Based on the design of
-[fabriziofiorucci/NGINX-Greylist](https://github.com/fabriziofiorucci/NGINX-Greylist).
