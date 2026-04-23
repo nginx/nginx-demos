@@ -56,6 +56,6 @@ then
         exit
 fi
 
-echo "==> Building NGINX Management Suite docker image"
+echo "==> Building NGINX Instance Manager docker image"
 
 DOCKER_BUILDKIT=1 docker build --no-cache -f Dockerfile --secret id=nginx-key,src=$NGINX_KEY --secret id=nginx-crt,src=$NGINX_CERT -t $IMGNAME .
