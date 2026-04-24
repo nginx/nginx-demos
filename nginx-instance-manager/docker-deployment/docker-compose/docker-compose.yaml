@@ -1,7 +1,6 @@
-version: "3"
 services:
     clickhouse:
-     image: clickhouse/clickhouse-server:23.1.2.9
+     image: clickhouse/clickhouse-server:23-alpine
      ports:
      - "9000:9000"
      environment:
@@ -16,7 +15,7 @@ services:
        soft: 262144
        hard: 262144
 
-    nms:
+    nim:
      image: ${NIM_IMAGE}
      ports:
      - "443:443"
@@ -24,8 +23,7 @@ services:
      - NIM_LICENSE=${NIM_LICENSE}
      - NIM_USERNAME=${NIM_USERNAME}
      - NIM_PASSWORD=${NIM_PASSWORD}
-     - NIM_CLICKHOUSE_ADDRESS=${NIM_CLICKHOUSE_ADDRESS}
-     - NIM_CLICKHOUSE_PORT=9000
+     - NIM_CLICKHOUSE_ADDRESSPORT=${NIM_CLICKHOUSE_ADDRESSPORT}
      - NIM_CLICKHOUSE_USERNAME=${NIM_CLICKHOUSE_USERNAME}
      - NIM_CLICKHOUSE_PASSWORD=${NIM_CLICKHOUSE_PASSWORD}
      volumes:

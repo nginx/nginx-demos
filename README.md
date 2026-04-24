@@ -48,7 +48,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|Owner|
 |-----|-----------|-----|
-|[NGINX Instance Manager Docker deployment](nginx-instance-manager/docker-deployment/)|Tool to build docker images for NGINX Instance Manager|@fabriziofiorucci|
+|[NGINX Instance Manager Docker deployment](nginx-instance-manager/docker-deployment/)|Tool to build unprivileged docker images for NGINX Instance Manager|@fabriziofiorucci|
 
 ### NGINX Workshops
 
