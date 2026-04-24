@@ -1,0 +1,36 @@
+# Aruba Networks VSA dictionary
+# FreeRADIUS compatible format
+#
+# Aruba Networks IANA PEN: 14823
+
+VENDOR		Aruba			14823
+
+BEGIN-VENDOR	Aruba
+
+ATTRIBUTE	Aruba-User-Role			1	string
+ATTRIBUTE	Aruba-User-Vlan			2	integer
+ATTRIBUTE	Aruba-Priv-Admin-User		3	integer
+ATTRIBUTE	Aruba-Admin-Role		4	string
+ATTRIBUTE	Aruba-Essid-Name		5	string
+ATTRIBUTE	Aruba-Location-Id		6	string
+ATTRIBUTE	Aruba-Port-Identifier		7	string
+ATTRIBUTE	Aruba-MMS-User-Template		8	string
+ATTRIBUTE	Aruba-Named-User-Vlan		9	string
+ATTRIBUTE	Aruba-AP-Group			10	string
+ATTRIBUTE	Aruba-Framed-IPv6-Address	11	string
+ATTRIBUTE	Aruba-Device-Type		12	string
+ATTRIBUTE	Aruba-No-DHCP-Fingerprint	13	integer
+ATTRIBUTE	Aruba-Mdps-Device-Udid		14	string
+ATTRIBUTE	Aruba-Mdps-Device-Imei		15	string
+ATTRIBUTE	Aruba-Mdps-Device-Iccid		16	string
+ATTRIBUTE	Aruba-Mdps-Max-Devices		17	integer
+ATTRIBUTE	Aruba-Mdps-Provisioning-Settings 18	string
+ATTRIBUTE	Aruba-Mdps-Device-Profile	19	string
+ATTRIBUTE	Aruba-AP-IP-Address		20	ipaddr
+ATTRIBUTE	Aruba-User-Group		21	string
+ATTRIBUTE	Aruba-Reauthentication-Action	22	integer
+
+VALUE		Aruba-Reauthentication-Action	Disconnect	0
+VALUE		Aruba-Reauthentication-Action	Bounce		1
+
+END-VENDOR	Aruba
