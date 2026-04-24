@@ -27,6 +27,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX API steering](nginx/api-steering/)|NGINX as an API gateway using an external data source for authentication, authorization and steering|@fabriziofiorucci|
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, F5 WAF for NGINX, NGINX Agent|@fabriziofiorucci|
 |[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
+|[NGINX service discovery](nginx/nginx-service-discovery/)|Consul-compatible service discovery implemented with NGINX + njs|@fabriziofiorucci|
 |[NGINX greylist module](nginx/ngx_http_greylist_module/)|A native C dynamic module for open-source NGINX that provides pattern-based rate limiting with automatic client greylisting|@fabriziofiorucci|
 |[NGINX RADIUS parser module](nginx/ngx_stream_radius_module/)|A native C NGINX module that parses RADIUS authentication and accounting packets in the stream context, populating NGINX variables with all AVP (Attribute-Value Pair) fields defined in RFC 2865 and RFC 2866, including full Vendor-Specific Attribute (VSA) support with loadable vendor dictionaries|@fabriziofiorucci|
 |[NGINX SOAP REST](nginx/soap-to-rest/)|Example NGINX configuration to translate between SOAP and REST|@fabriziofiorucci|
