@@ -1,0 +1,22 @@
+# Juniper VSA dictionary
+# FreeRADIUS compatible format
+#
+# Juniper Networks IANA PEN: 2636
+
+VENDOR		Juniper			2636
+
+BEGIN-VENDOR	Juniper
+
+ATTRIBUTE	Juniper-Local-User-Name		1	string
+ATTRIBUTE	Juniper-Allow-Commands		2	string
+ATTRIBUTE	Juniper-Deny-Commands		3	string
+ATTRIBUTE	Juniper-Allow-Configuration	4	string
+ATTRIBUTE	Juniper-Deny-Configuration	5	string
+ATTRIBUTE	Juniper-Interactive-Command	8	string
+ATTRIBUTE	Juniper-Configuration-Change	9	string
+ATTRIBUTE	Juniper-User-Permissions	10	string
+ATTRIBUTE	Juniper-Junosspace-Profile	11	string
+ATTRIBUTE	Juniper-CWA-Redirect		12	string
+ATTRIBUTE	Juniper-SRC-VSA			13	string
+
+END-VENDOR	Juniper

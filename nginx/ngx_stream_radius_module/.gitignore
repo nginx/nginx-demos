@@ -1,0 +1,26 @@
+# Build artifacts
+*.so
+*.o
+*.a
+objs/
+
+# Test binaries
+tests/test_radius_parser
+tests/*.o
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Generated docs
+docs/_build/
+
+# Packaging
+*.tar.gz
+*.zip
