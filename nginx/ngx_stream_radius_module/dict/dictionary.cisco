@@ -1,0 +1,47 @@
+# Cisco VSA dictionary
+# FreeRADIUS compatible format
+#
+# Cisco Systems IANA PEN: 9
+
+VENDOR		Cisco			9
+
+BEGIN-VENDOR	Cisco
+
+ATTRIBUTE	Cisco-AVPair			1	string
+ATTRIBUTE	Cisco-NAS-Port			2	string
+ATTRIBUTE	Cisco-Fax-Account-Id-Origin	3	string
+ATTRIBUTE	Cisco-Fax-Msg-Id		4	string
+ATTRIBUTE	Cisco-Fax-Pages			5	string
+ATTRIBUTE	Cisco-Fax-Coverpage-Flag	6	string
+ATTRIBUTE	Cisco-Fax-Modem-Time		7	string
+ATTRIBUTE	Cisco-Fax-Connect-Speed		8	string
+ATTRIBUTE	Cisco-Fax-Recipient-Count	9	string
+ATTRIBUTE	Cisco-Fax-Process-Abort-Flag	10	string
+ATTRIBUTE	Cisco-Fax-DSN-Address		11	string
+ATTRIBUTE	Cisco-Fax-DSN-Flag		12	string
+ATTRIBUTE	Cisco-Fax-MDN-Address		13	string
+ATTRIBUTE	Cisco-Fax-MDN-Flag		14	string
+ATTRIBUTE	Cisco-Fax-Auth-Status		15	string
+ATTRIBUTE	Cisco-Email-Server-Address	16	string
+ATTRIBUTE	Cisco-Email-Server-Reply-Code	17	string
+ATTRIBUTE	Cisco-Fax-Forward-Address	18	string
+ATTRIBUTE	Cisco-Fax-Query-Address		19	string
+ATTRIBUTE	Cisco-Gateway-Id		20	string
+ATTRIBUTE	Cisco-Call-Type			21	integer
+ATTRIBUTE	Cisco-Incoming-Req-Uri		24	string
+ATTRIBUTE	Cisco-Outgoing-Req-Uri		25	string
+ATTRIBUTE	Cisco-Policy-Up			37	string
+ATTRIBUTE	Cisco-Policy-Down		38	string
+ATTRIBUTE	Cisco-Idle-Limit		244	integer
+ATTRIBUTE	Cisco-Subscriber-Password	249	string
+ATTRIBUTE	Cisco-Interface-Name		255	string
+
+VALUE		Cisco-Call-Type		Cisco-Voice		1
+VALUE		Cisco-Call-Type		Cisco-Fax		2
+VALUE		Cisco-Call-Type		Cisco-Transfer-NumOnly	3
+VALUE		Cisco-Call-Type		Cisco-Transfer		4
+VALUE		Cisco-Call-Type		Cisco-Handoff		5
+VALUE		Cisco-Call-Type		Cisco-SS-RPH		6
+VALUE		Cisco-Call-Type		Cisco-Data		7
+
+END-VENDOR	Cisco
