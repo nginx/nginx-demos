@@ -145,6 +145,7 @@ sudo cp objs/ngx_stream_radius_module.so /etc/nginx/modules/
 ### Static Module
 
 ```bash
+nginx_version=$(nginx -v 2>&1 | grep -oP '[\d.]+' | head -n1)
 cd nginx-${nginx_version}
 ./configure \
     --with-stream \
