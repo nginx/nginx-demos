@@ -17,6 +17,8 @@ services:
 
     nim:
      image: ${NIM_IMAGE}
+     depends_on:
+     - clickhouse
      ports:
      - "443:443"
      environment:
@@ -26,6 +28,7 @@ services:
      - NIM_CLICKHOUSE_ADDRESSPORT=${NIM_CLICKHOUSE_ADDRESSPORT}
      - NIM_CLICKHOUSE_USERNAME=${NIM_CLICKHOUSE_USERNAME}
      - NIM_CLICKHOUSE_PASSWORD=${NIM_CLICKHOUSE_PASSWORD}
+     - NIM_LICENSE_MODE_OF_OPERATION=${NIM_LICENSE_MODE_OF_OPERATION}
      volumes:
      - nms-data:/var/lib/nms
 
