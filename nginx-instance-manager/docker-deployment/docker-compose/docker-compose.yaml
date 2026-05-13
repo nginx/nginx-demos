@@ -19,6 +19,7 @@ services:
      image: ${NIM_IMAGE}
      depends_on:
      - clickhouse
+     restart: unless-stopped
      ports:
      - "443:443"
      environment:
