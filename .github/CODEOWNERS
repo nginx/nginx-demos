@@ -11,6 +11,7 @@ nginx/docker-image-builder @aknot242 @fabriziofiorucci
 nginx/multicloud-gateway @aknot242 @fabriziofiorucci
 nginx/ngx_http_greylist_module @aknot242 @fabriziofiorucci
 nginx/ngx_stream_radius_module @aknot242 @fabriziofiorucci
+nginx/ngx_http_consul_service_discovery_module @aknot242 @fabriziofiorucci
 nginx/soap-to-rest @aknot242 @fabriziofiorucci
 nginx-gateway-fabric/traffic-splitting @sjberman
 nginx-ingress-controller/ingress-deployment @nginx/demos
