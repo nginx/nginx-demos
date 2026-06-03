@@ -149,7 +149,7 @@ nginx_version=$(nginx -v 2>&1 | grep -oP '[\d.]+' | head -n1)
 cd nginx-${nginx_version}
 ./configure \
     --with-stream \
-    --add-module=../ngx_stream_radius_module
+    --add-module=../nginx-demos/nginx/ngx_stream_radius_module
 make
 sudo make install
 ```
