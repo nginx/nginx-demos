@@ -69,10 +69,11 @@ ngx_stream_dns_preread_handler(ngx_stream_session_t *s)
             len = scf->max_size;
         }
 
-        if (ngx_dns_parse_packet((const uint8_t *)b->pos, len, &ctx->req_pkt) == 0) {
+        int is_tcp = (c->type == SOCK_STREAM);
+        if (ngx_dns_parse_packet((const uint8_t *)b->pos, len, is_tcp, &ctx->req_pkt) == 0) {
             ctx->req_parse_ok = 1;
+            ctx->req_parsed = 1;
         }
-        ctx->req_parsed = 1;
         return NGX_DECLINED;
     }
 
@@ -107,40 +108,42 @@ ngx_stream_dns_filter(ngx_stream_session_t *s, ngx_chain_t *in, ngx_uint_t from_
     }
 
     if (in != NULL) {
-        u_char buf[2048];
+        size_t max_buf_size = (scf->max_size > 0) ? scf->max_size : 4096;
+        u_char *buf = ngx_pnalloc(s->connection->pool, max_buf_size);
+        if (buf == NULL) {
+            return next_filter(s, in, from_upstream);
+        }
+
         size_t len = 0;
 
-        for (cl = in; cl != NULL && len < sizeof(buf); cl = cl->next) {
+        for (cl = in; cl != NULL && len < max_buf_size; cl = cl->next) {
             if (cl->buf != NULL) {
                 size_t size = (size_t)(cl->buf->last - cl->buf->pos);
                 if (size > 0) {
-                    size_t copy = (size + len <= sizeof(buf)) ? size : sizeof(buf) - len;
+                    size_t copy = (size + len <= max_buf_size) ? size : max_buf_size - len;
                     ngx_memcpy(buf + len, cl->buf->pos, copy);
                     len += copy;
                 }
             }
         }
 
-        if (scf->max_size > 0 && len > scf->max_size) {
-            len = scf->max_size;
-        }
-
         if (len >= 12) {
+            int is_tcp = (s->connection && s->connection->type == SOCK_STREAM);
             if (from_upstream) {
                 /* Response stream from Upstream server */
                 if (!ctx->resp_parsed) {
-                    if (ngx_dns_parse_packet((const uint8_t *)buf, len, &ctx->resp_pkt) == 0) {
+                    if (ngx_dns_parse_packet((const uint8_t *)buf, len, is_tcp, &ctx->resp_pkt) == 0) {
                         ctx->resp_parse_ok = 1;
+                        ctx->resp_parsed = 1;
                     }
-                    ctx->resp_parsed = 1;
                 }
             } else {
                 /* Request stream from Downstream client */
                 if (!ctx->req_parsed) {
-                    if (ngx_dns_parse_packet((const uint8_t *)buf, len, &ctx->req_pkt) == 0) {
+                    if (ngx_dns_parse_packet((const uint8_t *)buf, len, is_tcp, &ctx->req_pkt) == 0) {
                         ctx->req_parse_ok = 1;
+                        ctx->req_parsed = 1;
                     }
-                    ctx->req_parsed = 1;
                 }
             }
         }
@@ -219,6 +222,27 @@ ngx_stream_dns_var_req_id(ngx_stream_session_t *s,
     if (p == NULL) return NGX_ERROR;
 
     v->len = ngx_sprintf(p, "%ui", (ngx_uint_t)ctx->req_pkt.header.id) - p;
+    v->data = p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_stream_dns_var_resp_id(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    ngx_stream_dns_ctx_t *ctx = ngx_stream_get_module_ctx(s, ngx_stream_dns_module);
+    if (!ctx || !ctx->resp_parse_ok) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    u_char *p = ngx_pnalloc(s->connection->pool, 16);
+    if (p == NULL) return NGX_ERROR;
+
+    v->len = ngx_sprintf(p, "%ui", (ngx_uint_t)ctx->resp_pkt.header.id) - p;
     v->data = p;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -350,7 +374,7 @@ static ngx_stream_variable_t ngx_stream_dns_vars[] = {
     { ngx_string("dns_request_class"), NULL, ngx_stream_dns_var_req_qclass, 0, 0, 0 },
     { ngx_string("dns_request_qclass"), NULL, ngx_stream_dns_var_req_qclass, 0, 0, 0 },
     { ngx_string("dns_request_id"), NULL, ngx_stream_dns_var_req_id, 0, 0, 0 },
-    { ngx_string("dns_response_id"), NULL, ngx_stream_dns_var_req_id, 0, 0, 0 },
+    { ngx_string("dns_response_id"), NULL, ngx_stream_dns_var_resp_id, 0, 0, 0 },
     { ngx_string("dns_response_rcode"), NULL, ngx_stream_dns_var_resp_rcode, 0, 0, 0 },
     { ngx_string("dns_response_rcode_str"), NULL, ngx_stream_dns_var_resp_rcode_str, 0, 0, 0 },
     { ngx_string("dns_response_ancount"), NULL, ngx_stream_dns_var_resp_ancount, 0, 0, 0 },
@@ -428,7 +452,7 @@ ngx_stream_dns_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_stream_dns_srv_conf_t *prev = parent;
     ngx_stream_dns_srv_conf_t *conf = child;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 1);
+    ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_size_value(conf->max_size, prev->max_size, 4096);
 
     return NGX_CONF_OK;

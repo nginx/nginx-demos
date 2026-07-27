@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Integration test suite for ngx_stream_dns_module.
-Sends raw DNS packets via UDP and TCP sockets to NGINX Stream server and validates log outputs.
+Sends raw DNS packets via UDP and TCP sockets to NGINX Stream server and verifies socket communication.
 """
 
 import sys

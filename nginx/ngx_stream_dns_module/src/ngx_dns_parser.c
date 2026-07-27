@@ -243,13 +243,13 @@ static int ngx_dns_parse_rdata(const uint8_t *buf, size_t buf_len, size_t rdata_
 #pragma GCC diagnostic pop
 #endif
 
-int ngx_dns_parse_packet(const uint8_t *buf, size_t len, ngx_dns_packet_t *pkt) {
+int ngx_dns_parse_packet(const uint8_t *buf, size_t len, int is_tcp, ngx_dns_packet_t *pkt) {
     if (buf == NULL || pkt == NULL) return -1;
 
     memset(pkt, 0, sizeof(ngx_dns_packet_t));
 
-    /* Check for TCP 2-byte length prefix (RFC 1035 4.2.2) */
-    if (len >= 14 && ngx_dns_read_u16(buf) == (uint16_t)(len - 2)) {
+    /* Check for TCP 2-byte length prefix if transport is TCP (RFC 1035 4.2.2) */
+    if (is_tcp && len >= 14 && ngx_dns_read_u16(buf) == (uint16_t)(len - 2)) {
         buf += 2;
         len -= 2;
     }
@@ -349,27 +349,42 @@ size_t ngx_dns_packet_to_json(const ngx_dns_packet_t *pkt, char *json_buf, size_
     if (!pkt || !json_buf || max_len == 0) return 0;
 
     size_t len = 0;
-    if (len < max_len) {
-        len += snprintf(json_buf + len, max_len - len, "[");
+    int n = snprintf(json_buf, max_len, "[");
+    if (n > 0) {
+        len += ((size_t)n < max_len) ? (size_t)n : max_len - 1;
     }
 
     for (uint16_t i = 0; i < pkt->parsed_answers; i++) {
         const ngx_dns_rr_t *rr = &pkt->answers[i];
-        if (i > 0 && len < max_len) {
-            len += snprintf(json_buf + len, max_len - len, ",");
+        if (i > 0 && len < max_len - 1) {
+            n = snprintf(json_buf + len, max_len - len, ",");
+            if (n > 0) {
+                len += ((size_t)n < max_len - len) ? (size_t)n : max_len - 1 - len;
+            }
         }
-        if (len < max_len) {
-            len += snprintf(json_buf + len, max_len - len,
-                            "{\"name\":\"%.255s\",\"type\":\"%.31s\",\"ttl\":%u,\"data\":\"%.511s\"}",
-                            rr->name, rr->type_str, rr->ttl,
-                            rr->rdata_str[0] ? rr->rdata_str : rr->ip_str);
+        if (len < max_len - 1) {
+            n = snprintf(json_buf + len, max_len - len,
+                         "{\"name\":\"%.255s\",\"type\":\"%.31s\",\"ttl\":%u,\"data\":\"%.511s\"}",
+                         rr->name, rr->type_str, rr->ttl,
+                         rr->rdata_str[0] ? rr->rdata_str : rr->ip_str);
+            if (n > 0) {
+                len += ((size_t)n < max_len - len) ? (size_t)n : max_len - 1 - len;
+            }
         }
     }
 
-    if (len < max_len) {
-        len += snprintf(json_buf + len, max_len - len, "]");
+    if (len < max_len - 1) {
+        n = snprintf(json_buf + len, max_len - len, "]");
+        if (n > 0) {
+            len += ((size_t)n < max_len - len) ? (size_t)n : max_len - 1 - len;
+        }
     }
-    return (len < max_len) ? len : max_len - 1;
+
+    if (len >= max_len) {
+        len = max_len - 1;
+    }
+    json_buf[len] = '\0';
+    return len;
 }
 
 size_t ngx_dns_answers_to_ips(const ngx_dns_packet_t *pkt, char *ip_buf, size_t max_len) {
@@ -382,15 +397,25 @@ size_t ngx_dns_answers_to_ips(const ngx_dns_packet_t *pkt, char *ip_buf, size_t 
     for (uint16_t i = 0; i < pkt->parsed_answers; i++) {
         const ngx_dns_rr_t *rr = &pkt->answers[i];
         if (rr->ip_str[0] != '\0') {
-            if (count > 0 && len < max_len) {
-                len += snprintf(ip_buf + len, max_len - len, ", ");
+            if (count > 0 && len < max_len - 1) {
+                int n = snprintf(ip_buf + len, max_len - len, ", ");
+                if (n > 0) {
+                    len += ((size_t)n < max_len - len) ? (size_t)n : max_len - 1 - len;
+                }
             }
-            if (len < max_len) {
-                len += snprintf(ip_buf + len, max_len - len, "%.63s", rr->ip_str);
+            if (len < max_len - 1) {
+                int n = snprintf(ip_buf + len, max_len - len, "%.63s", rr->ip_str);
+                if (n > 0) {
+                    len += ((size_t)n < max_len - len) ? (size_t)n : max_len - 1 - len;
+                }
                 count++;
             }
         }
     }
 
+    if (len >= max_len) {
+        len = max_len - 1;
+    }
+    ip_buf[len] = '\0';
     return len;
 }

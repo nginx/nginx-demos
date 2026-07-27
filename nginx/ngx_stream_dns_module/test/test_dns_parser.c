@@ -41,7 +41,7 @@ static int test_udp_query_a_record(void) {
     };
 
     ngx_dns_packet_t pkt;
-    int rc = ngx_dns_parse_packet(wire_packet, sizeof(wire_packet), &pkt);
+    int rc = ngx_dns_parse_packet(wire_packet, sizeof(wire_packet), 0, &pkt);
 
     assert(rc == 0);
     assert(pkt.parsed_ok == 1);
@@ -64,7 +64,7 @@ static int test_tcp_query_a_record(void) {
     };
 
     ngx_dns_packet_t pkt;
-    int rc = ngx_dns_parse_packet(tcp_packet, sizeof(tcp_packet), &pkt);
+    int rc = ngx_dns_parse_packet(tcp_packet, sizeof(tcp_packet), 1, &pkt);
 
     assert(rc == 0);
     assert(pkt.parsed_ok == 1);
@@ -90,7 +90,7 @@ static int test_response_a_record(void) {
     };
 
     ngx_dns_packet_t pkt;
-    int rc = ngx_dns_parse_packet(wire_packet, sizeof(wire_packet), &pkt);
+    int rc = ngx_dns_parse_packet(wire_packet, sizeof(wire_packet), 0, &pkt);
 
     assert(rc == 0);
     assert(pkt.parsed_ok == 1);
@@ -106,7 +106,7 @@ static int test_truncated_packet(void) {
     uint8_t short_packet[] = { 0x12, 0x34, 0x01 };
 
     ngx_dns_packet_t pkt;
-    int rc = ngx_dns_parse_packet(short_packet, sizeof(short_packet), &pkt);
+    int rc = ngx_dns_parse_packet(short_packet, sizeof(short_packet), 0, &pkt);
 
     assert(rc == -1);
     assert(pkt.parsed_ok == 0);
@@ -124,7 +124,7 @@ static int test_pointer_loop(void) {
     };
 
     ngx_dns_packet_t pkt;
-    int rc = ngx_dns_parse_packet(loop_packet, sizeof(loop_packet), &pkt);
+    int rc = ngx_dns_parse_packet(loop_packet, sizeof(loop_packet), 0, &pkt);
 
     assert(rc == -1);
     assert(pkt.parsed_ok == 0);

@@ -88,7 +88,7 @@ typedef struct {
 } ngx_dns_packet_t;
 
 /* Function Prototypes */
-int ngx_dns_parse_packet(const uint8_t *buf, size_t len, ngx_dns_packet_t *pkt);
+int ngx_dns_parse_packet(const uint8_t *buf, size_t len, int is_tcp, ngx_dns_packet_t *pkt);
 const char *ngx_dns_type_to_str(uint16_t type);
 const char *ngx_dns_class_to_str(uint16_t class_code);
 const char *ngx_dns_rcode_to_str(uint8_t rcode);
