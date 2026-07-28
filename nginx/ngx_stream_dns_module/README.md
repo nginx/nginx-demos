@@ -334,4 +334,4 @@ dig @127.0.0.1 -p 20053 -t a google.com +tcp
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
+Licensed under the Apache License, Version 2.0
