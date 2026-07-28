@@ -53,8 +53,8 @@ __DATA__
 --- response_body_like eval
 ["v2", qr/"request_method"/]
 --- response_body_unlike eval
-[qr//, qr/"host"\s*:\s*\{\s*"value"/]
-
+##[qr//, qr/"host"\s*:\s*\{\s*"value"/]
+[qr/(?!)/, qr/"host"\s*:\s*\{\s*"value"/]
 === TEST 3: a watched variable carries an op classification
 --- http_config
     trace_zone zv3 1m;
