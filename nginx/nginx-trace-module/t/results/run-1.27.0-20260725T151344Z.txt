@@ -1,0 +1,215 @@
+=================================================================
+ ngx-trace test record
+ date (UTC) : 20260725T151344Z
+ nginx      : 1.27.0
+ image      : ngx-trace-dev:1.27.0
+=================================================================
+
+----- nginx -V -----
+nginx version: nginx/1.27.0
+built by gcc 12.2.0 (Debian 12.2.0-14+deb12u1) 
+built with OpenSSL 3.0.20 7 Apr 2026
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --with-compat --with-debug --with-http_v2_module --with-http_ssl_module --with-http_auth_request_module --with-stream --add-dynamic-module=/src/ngx-trace
+
+----- nginx -t (module load check) -----
+nginx: the configuration file /usr/local/nginx/conf/loadcheck.conf syntax is ok
+nginx: configuration file /usr/local/nginx/conf/loadcheck.conf test is successful
+
+----- prove -v t/ -----
+t/config.t TEST 2: location-scoped directives parse in a location block - timeout when waiting for the process 13 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 2: location-scoped directives parse in a location block - WARNING: killing the child process 13 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - timeout when waiting for the process 17 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - WARNING: killing the child process 17 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 4: trace_log_level accepts every level in the ladder - timeout when waiting for the process 21 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 4: trace_log_level accepts every level in the ladder - WARNING: killing the child process 21 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - timeout when waiting for the process 25 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - WARNING: killing the child process 25 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 6: a main-conf directive is rejected in the location context - timeout when waiting for the process 29 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 6: a main-conf directive is rejected in the location context - WARNING: killing the child process 29 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+nginx: [emerg] "trace_zone" directive is not allowed here in /src/ngx-trace/t/servroot/conf/nginx.conf:41
+WARNING: t/config.t TEST 6: a main-conf directive is rejected in the location context - 2026/07/25 15:14:17 [emerg] 32#0: \"trace_zone\" directive is not allowed here in /src/ngx-trace/t/servroot/conf/nginx.conf:41 at /usr/local/share/perl/5.36.0/Test/Nginx/Socket.pm line 1417.
+t/config.t ............ 
+ok 1 - t/config.t TEST 1: full directive surface parses; a request still succeeds - status code ok
+ok 2 - t/config.t TEST 1: full directive surface parses; a request still succeeds - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/config.t TEST 2: location-scoped directives parse in a location block - status code ok
+ok 4 - t/config.t TEST 2: location-scoped directives parse in a location block - response_body - response is expected (repeated req 0, req 0)
+ok 5 - t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - status code ok
+ok 6 - t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/config.t TEST 4: trace_log_level accepts every level in the ladder - status code ok
+ok 8 - t/config.t TEST 4: trace_log_level accepts every level in the ladder - response_body - response is expected (repeated req 0, req 0)
+ok 9 - t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - status code ok
+ok 10 - t/config.t TEST 6: a main-conf directive is rejected in the location context - die as expected
+ok 11 - t/config.t TEST 6: a main-conf directive is rejected in the location context - pattern ""trace_zone" directive is not allowed here" matches a line in error.log (req 0)
+1..11
+ok
+t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - timeout when waiting for the process 39 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - WARNING: killing the child process 39 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t TEST 1: debug level emits the commit milestone - timeout when waiting for the process 43 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 1: debug level emits the commit milestone - WARNING: killing the child process 43 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - timeout when waiting for the process 47 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - WARNING: killing the child process 47 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 51 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 51 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t .......... 
+ok 1 - t/diag_log.t TEST 2: default level short-circuits the debug milestone - status code ok
+ok 2 - t/diag_log.t TEST 2: default level short-circuits the debug milestone - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+ok 3 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - status code ok
+ok 4 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - pattern "[trace] commit txn status=200 bytes=" matches a line in error.log (req 0)
+ok 5 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - pattern "[trace] commit txn status=200 bytes=0 SECRETPAYLOAD" does not match a line in error.log (req 0)
+ok 6 - t/diag_log.t TEST 1: debug level emits the commit milestone - status code ok
+ok 7 - t/diag_log.t TEST 1: debug level emits the commit milestone - pattern "[trace] commit txn status=200" matches a line in error.log (req 0)
+ok 8 - t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - status code ok
+ok 9 - t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+1..9
+ok
+t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - timeout when waiting for the process 58 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - WARNING: killing the child process 58 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - timeout when waiting for the process 62 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - WARNING: killing the child process 62 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - timeout when waiting for the process 66 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - WARNING: killing the child process 66 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 70 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 70 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t ............. 
+ok 1 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - status code ok
+ok 2 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - pattern "[error]" does not match a line in error.log (req 0)
+ok 4 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - status code ok
+ok 5 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - response_body - response is expected (repeated req 0, req 0)
+ok 6 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[error]" does not match a line in error.log (req 0)
+ok 7 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[alert]" does not match a line in error.log (req 0)
+ok 8 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[emerg]" does not match a line in error.log (req 0)
+ok 9 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - status code ok
+ok 10 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - header X-Trace-State ok
+ok 11 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - response_body - response is expected (repeated req 0, req 0)
+ok 12 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[error]" does not match a line in error.log (req 0)
+ok 13 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[alert]" does not match a line in error.log (req 0)
+ok 14 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[emerg]" does not match a line in error.log (req 0)
+ok 15 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - status code ok
+ok 16 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - header X-Probe ok
+ok 17 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - pattern "[error]" does not match a line in error.log (req 0)
+1..17
+ok
+t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - timeout when waiting for the process 77 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - WARNING: killing the child process 77 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - timeout when waiting for the process 81 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - WARNING: killing the child process 81 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - timeout when waiting for the process 85 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - WARNING: killing the child process 85 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 89 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 89 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t ........ 
+ok 1 - t/inert_mode.t TEST 1: directives accepted with NO trace_zone; request still succeeds - status code ok
+ok 2 - t/inert_mode.t TEST 1: directives accepted with NO trace_zone; request still succeeds - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - status code ok
+ok 4 - t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - status code ok
+ok 5 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - status code ok
+ok 6 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+1..7
+ok
+t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - timeout when waiting for the process 96 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - WARNING: killing the child process 96 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - timeout when waiting for the process 100 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - WARNING: killing the child process 100 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - timeout when waiting for the process 104 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - WARNING: killing the child process 104 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - timeout when waiting for the process 108 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - WARNING: killing the child process 108 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 112 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 112 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t ........... 
+ok 1 - t/inherit.t TEST 1: location inherits `trace on` from the http scope - status code ok
+ok 2 - t/inherit.t TEST 1: location inherits `trace on` from the http scope - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - status code ok
+ok 4 - t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - response_body - response is expected (repeated req 0, req 0)
+ok 5 - t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - status code ok
+ok 6 - t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - status code ok
+ok 8 - t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - response_body - response is expected (repeated req 0, req 0)
+ok 9 - t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - status code ok
+ok 10 - t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - response_body - response is expected (repeated req 0, req 0)
+1..10
+ok
+t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - timeout when waiting for the process 119 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - WARNING: killing the child process 119 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - timeout when waiting for the process 123 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - WARNING: killing the child process 123 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - timeout when waiting for the process 127 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - WARNING: killing the child process 127 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 6: LOG phase handler does not disturb the response - timeout when waiting for the process 131 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 6: LOG phase handler does not disturb the response - WARNING: killing the child process 131 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - timeout when waiting for the process 135 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - WARNING: killing the child process 135 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 5: error_page interception still works (routing intact) - timeout when waiting for the process 139 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 5: error_page interception still works (routing intact) - WARNING: killing the child process 139 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 143 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 143 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t ............ 
+ok 1 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - status code ok
+ok 2 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - pattern "[error]" does not match a line in error.log (req 0)
+ok 4 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - status code ok
+ok 5 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - response_body - response is expected (repeated req 0, req 0)
+ok 6 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - pattern "[error]" does not match a line in error.log (req 0)
+ok 7 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - status code ok
+ok 8 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - response_body - response is expected (repeated req 0, req 0)
+ok 9 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - pattern "[error]" does not match a line in error.log (req 0)
+ok 10 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - status code ok
+ok 11 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - response_body - response is expected (repeated req 0, req 0)
+ok 12 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - pattern "[error]" does not match a line in error.log (req 0)
+ok 13 - t/phases.t TEST 6: LOG phase handler does not disturb the response - status code ok
+ok 14 - t/phases.t TEST 6: LOG phase handler does not disturb the response - response_body - response is expected (repeated req 0, req 0)
+ok 15 - t/phases.t TEST 6: LOG phase handler does not disturb the response - pattern "[error]" does not match a line in error.log (req 0)
+ok 16 - t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - status code ok
+ok 17 - t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - pattern "[error]" does not match a line in error.log (req 0)
+ok 18 - t/phases.t TEST 5: error_page interception still works (routing intact) - status code ok
+ok 19 - t/phases.t TEST 5: error_page interception still works (routing intact) - response_body - response is expected (repeated req 0, req 0)
+ok 20 - t/phases.t TEST 5: error_page interception still works (routing intact) - pattern "[error]" does not match a line in error.log (req 0)
+1..20
+ok
+t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - timeout when waiting for the process 150 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - WARNING: killing the child process 150 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - timeout when waiting for the process 154 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - WARNING: killing the child process 154 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 158 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 158 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/shm_roundtrip.t ..... 
+ok 1 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - status code ok
+ok 2 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - response_body_like - response is expected (z)
+ok 3 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - status code ok
+ok 4 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - response_body_like - response is expected ({"txn":"hello","method":"GET","uri":"/hit","status":200,"steps":[{"phase":"LOG","note":"hello timeline"}]})
+ok 5 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - status code ok
+ok 6 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - response_body_like - response is expected (backend-body)
+ok 7 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - status code ok
+ok 8 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - response_body_like - response is expected ({"txn":"hello","method":"GET","uri":"/front","status":200,"steps":[{"phase":"LOG","note":"hello timeline"}]})
+ok 9 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - status code ok
+ok 10 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - response_body_like - response is expected (created)
+ok 11 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - status code ok
+ok 12 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - response_body_like - response is expected ({"txn":"hello","method":"GET","uri":"/api","status":201,"steps":[{"phase":"LOG","note":"hello timeline"}]})
+1..12
+ok
+t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - timeout when waiting for the process 165 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - WARNING: killing the child process 165 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - timeout when waiting for the process 169 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - WARNING: killing the child process 169 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - timeout when waiting for the process 173 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - WARNING: killing the child process 173 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 177 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 177 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t .. 
+ok 1 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - status code ok
+ok 2 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - grep_error_log_out (req 0)
+ok 4 - t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - status code ok
+ok 5 - t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - pattern "GET /back2 HTTP/1.0" matches a line in error.log (req 0)
+ok 6 - t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - status code ok
+ok 7 - t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - pattern "HTTP/1.1 201" matches a line in error.log (req 0)
+ok 8 - t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - status code ok
+ok 9 - t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - pattern "(?^:Host: 127\.0\.0\.1:\d+)" matches a line in error.log (req 0)
+1..9
+ok
+All tests successful.
+Files=8, Tests=95, 239 wallclock secs ( 0.05 usr  0.02 sys +  0.96 cusr  0.65 csys =  1.68 CPU)
+Result: PASS
