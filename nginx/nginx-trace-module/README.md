@@ -82,6 +82,7 @@ See [MANUAL_TEST.md](MANUAL_TEST.md) for the full feature-by-feature smoke guide
 http {
     trace_zone          trace_zone 2m;      # REQUIRED — shm zone for sessions+ring
     trace_max_sessions      32;             # max concurrent sessions
+    trace_zone          trace 2m;           # REQUIRED — shm zone for sessions+ring
     trace_max_transactions  64;             # max txns per session
     trace_retention         24h;            # viewable lifetime after stop
     trace_intercept         on;             # Layer-2 handler naming
@@ -145,11 +146,11 @@ Transaction {
 
 ```
  request pool (auto-freed)              shared memory zone (2 MB)
- ┌─────────────────────────┐           ┌──────────────────────────┐
- │ ctx: steps(64), tries(8),│          │ ring: 64 slots × 8 KB     │
- │      bodies(2×2KB),     │           │ sessions: 32 entries      │
- │      fault               │           │ mutex-guarded             │
- └─────────────────────────┘           └──────────────────────────┘
+ ┌──────────────────────────┐           ┌──────────────────────────┐
+ │ ctx: steps(64), tries(8),│           │ ring: 64 slots × 8 KB    │
+ │      bodies(2×2KB),      │           │ sessions: 32 entries     │
+ │      fault               │           │ mutex-guarded            │
+ └──────────────────────────┘           └──────────────────────────┘
 ```
 
 ## Fault classification

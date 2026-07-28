@@ -118,7 +118,7 @@ rewritten4-ok
 --- response_body_like eval
 ["first5", "second5", qr/"uri"\s*:\s*"\/second5"/]
 --- response_body_unlike eval
-[qr//, qr//, qr/"uri"\s*:\s*"\/first5"/]
+[qr/(?!)/, qr/(?!)/, qr/"uri"\s*:\s*"\/first5"/]
 
 === TEST 6: server-scoped `trace on` selects a location with no `trace` directive
 # Edge: the decision is NOT set in the location block at all — it is inherited
