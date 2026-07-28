@@ -69,8 +69,8 @@ GET /trace/last
 --- response_body_like eval
 ["solo", qr/"uri":"\/solo"/]
 --- response_body_unlike eval
+#[qr/(?!)/, qr/"txn":"trace".*"txn":"trace"/s]
 [qr/(?!)/, qr/"txn":"trace".*"txn":"trace"/s]
-
 === TEST 5 (edge): un-traced requests never enter the ring
 # Interleave traced and un-traced hits; only the traced ones appear, in order.
 --- http_config
