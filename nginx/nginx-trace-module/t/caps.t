@@ -31,7 +31,7 @@ __DATA__
 --- response_body_like eval
 ["a", "b", "c", qr/^\{"transactions":\[\{.*"uri":"\/b".*"uri":"\/c".*\}\]\}$/]
 --- response_body_unlike eval
-[qr//, qr//, qr//, qr/"uri":"\/a"/]
+[qr/(?!)/, qr/(?!)/, qr/(?!)/, qr/"uri":"\/a"/]
 
 === TEST 2: cap of 1 keeps only the single most-recent transaction
 --- http_config
