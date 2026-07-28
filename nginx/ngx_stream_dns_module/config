@@ -1,0 +1,15 @@
+ngx_addon_name=ngx_stream_dns_module
+
+if test -n "$ngx_module_link"; then
+    ngx_module_type=STREAM
+    ngx_module_name=ngx_stream_dns_module
+    ngx_module_incs="$ngx_addon_dir/src"
+    ngx_module_deps="$ngx_addon_dir/src/ngx_dns_parser.h"
+    ngx_module_srcs="$ngx_addon_dir/src/ngx_dns_parser.c $ngx_addon_dir/src/ngx_stream_dns_module.c"
+
+    . auto/module
+else
+    STREAM_MODULES="$STREAM_MODULES ngx_stream_dns_module"
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_dns_parser.c $ngx_addon_dir/src/ngx_stream_dns_module.c"
+    NGX_ADDON_INCS="$NGX_ADDON_INCS $ngx_addon_dir/src"
+fi

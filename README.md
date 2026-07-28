@@ -26,6 +26,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX API gateway](nginx/api-gateway/)|Configure NGINX as an API gateway|@alessfg|
 |[NGINX API steering](nginx/api-steering/)|NGINX as an API gateway using an external data source for authentication, authorization and steering|@fabriziofiorucci|
 |[NGINX Consul service discovery module](nginx/ngx_http_consul_service_discovery_module/)|A native C NGINX module the provides consul service discovery|@fabriziofiorucci|
+|[NGINX DNS parser module](nginx/ngx_stream_dns_module/)|A native C NGINX module that parses the DNS protocol|@fabriziofiorucci|
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, F5 WAF for NGINX, NGINX Agent|@fabriziofiorucci|
 |[NGINX greylist module](nginx/ngx_http_greylist_module/)|A native C dynamic module for open-source NGINX that provides pattern-based rate limiting with automatic client greylisting|@fabriziofiorucci|
 |[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
