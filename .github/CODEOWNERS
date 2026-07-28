@@ -18,3 +18,4 @@ nginx-gateway-fabric/traffic-splitting @sjberman
 nginx-ingress-controller/ingress-deployment @nginx/demos
 nginx-instance-manager/docker-deployment @aknot242 @fabriziofiorucci
 nginx-workshops @nginx/demos
+nginx/nginx-trace-module @keskinege
