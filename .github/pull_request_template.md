@@ -6,9 +6,9 @@ Describe the use case and detail of the change. If this PR addresses an issue on
 
 Before creating a PR, run through this checklist and mark each as complete:
 
-- [x] I have read the [contributing guidelines](/CONTRIBUTING.md).
-- [x] I have signed the [F5 Contributor License Agreement (CLA)](https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md).
-- [x] If applicable, I have added tests that prove my fix is effective or that my feature works.
-- [x] If applicable, I have checked that any relevant tests pass after adding my changes.
-- [x] If this is a new demo, I have added the demo info to both the [`CODEOWNERS`](/.github/CODEOWNERS) and [`README.md`](/README.md).
-- [x] I have updated any relevant documentation ([`README.md`](/README.md) and/or [`CHANGELOG.md`](/CHANGELOG.md)).
+- [ ] I have read the [contributing guidelines](/CONTRIBUTING.md).
+- [ ] I have signed the [F5 Contributor License Agreement (CLA)](https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md).
+- [ ] If applicable, I have added tests that prove my fix is effective or that my feature works.
+- [ ] If applicable, I have checked that any relevant tests pass after adding my changes.
+- [ ] If this is a new demo, I have added the demo info to both the [`CODEOWNERS`](/.github/CODEOWNERS) and [`README.md`](/README.md).
+- [ ] I have updated any relevant documentation ([`README.md`](/README.md) and/or [`CHANGELOG.md`](/CHANGELOG.md)).
