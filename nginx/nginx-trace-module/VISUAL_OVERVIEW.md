@@ -3,27 +3,27 @@
 ## What it does
 
 ```
-                                    ┌─────────────────────────────────┐
-   Client ──►  nginx worker          │  ngx_http_trace_module          │
-               │                     │                                 │
-               │ POST_READ  ──────── │  decide: trace this request?    │
-               │ SERVER_REWRITE      │         │ yes                   │
+                                     ┌────────────────────────────────┐
+   Client ──►  nginx worker          │  ngx_http_trace_module         │
+               │                     │                                │
+               │ POST_READ  ──────── │  decide: trace this request?   │
+               │ SERVER_REWRITE      │         │ yes                  │
                │ FIND_CONFIG         │         ▼                      │
                │ REWRITE             │  ┌──────────────┐              │
-               │ PREACCESS           │  │ trace context │  r->pool     │
-               │ ACCESS              │  │  · steps[]    │  auto-freed  │
-               │ PRECONTENT          │  │  · vars[]     │              │
-               │ CONTENT ──► proxy ──│──│  · tries[]    │              │
-               │ LOG ────────────────│──│  · fault      │              │
-               │                     │  │  · bodies     │              │
+               │ PREACCESS           │  │ trace context │  r->pool    │
+               │ ACCESS              │  │  · steps[]    │  auto-freed │
+               │ PRECONTENT          │  │  · vars[]     │             │
+               │ CONTENT ──► proxy ──│──│  · tries[]    │             │
+               │ LOG ────────────────│──│  · fault      │             │
+               │                     │  │  · bodies     │             │
                │                     │  └──────┬───────┘              │
-               │                     │         │ commit at LOG         │
+               │                     │         │ commit at LOG        │
                │                     │         ▼                      │
                │                     │  ┌──────────────┐              │
-               │                     │  │  ring buffer  │  shm slab    │
-               │                     │  │  64 slots     │  mutex-guard │
-               │                     │  │  + session    │              │
-               │                     │  │    store      │              │
+               │                     │  │  ring buffer  │  shm slab   │
+               │                     │  │  64 slots     │  mutex-guard│
+               │                     │  │  + session    │             │
+               │                     │  │    store      │             │
                │                     │  └──────┬───────┘              │
                └─────────────────────┼─────────┼──────────────────────┘
                                      │         │
@@ -58,7 +58,7 @@
 ```
 http {
     trace_zone          trace_zone 2m;      # ─ REQUIRED. shm zone for sessions+ring
-
+    trace_zone          trace 2m;           # REQUIRED — shm zone for sessions+ring
     trace_max_sessions      32;             # ─ max concurrent sessions (hard limit: 32)
     trace_max_transactions  64;             # ─ max txns per session (hard limit: 64)
     trace_retention         24h;            # ─ how long stopped sessions stay viewable
@@ -126,7 +126,7 @@ http {
   │ commits to ring buffer
   ▼
   ┌─────────────────────────────────────┐
-  │  Ring buffer slot #12                │
+  │  Ring buffer slot #12               │
   │  {"txn":"trace","method":"GET",     │
   │   "uri":"/foo","status":200,        │
   │   "worker_pid":42,"connection_id":3,│
@@ -193,37 +193,37 @@ Transaction {
 
 ```
 ┌─ bar ───────────────────────────────────────────────────┐
-│ nginx trace  [sessions▾] [New] [Stop] [Refresh]        │
-│ [Export] [Share] [Import]  [Search___________] [opts]  │
+│ nginx trace  [sessions▾] [New] [Stop] [Refresh]         │
+│ [Export] [Share] [Import]  [Search___________] [opts]   │
 └─────────────────────────────────────────────────────────┘
-┌─ rail ───┐ ┌─ center timeline ──────┐ ┌─ right detail ─────────┐
-│           │ │                        │ │                        │
-│ GET /      │ │ ▼ SERVER_REWRITE (1)   │ │ Step                   │
-│  200 · ε  │ │   ✓ core         ε0µs  │ │  phase: SERVER_REWRITE │
-│           │ │                        │ │  handler: core         │
-│ POST /json│ │ ▼ REWRITE (1)          │ │  status: ✓ success     │
-│  200 · 2ms│ │   ✓ core         ε0µs  │ │  offset: ε0µs          │
-│           │ │                        │ │                        │
-│ GET /fail │ │ ▶ ACCESS (3)          │ │ Variables              │
-│  401      │ │   ✗ auth_request 1.2ms│ │  uri        read  /foo│
-│  [fault]  │ │   ✓ auth_basic   ε0µs  │ │  status     set   200 │
-│           │ │   ✗ core          ε0µs  │ │                        │
-│           │ │                        │ │ Upstream (http)        │
-│           │ │ ▶ CONTENT (1)         │ │  ▶ try 0 · 127.0.0.1   │
-│           │ │   ✓ proxy       342µs  │ │    bytes: 368          │
-│           │ │                        │ │    connect: 1ms        │
-│           │ │ ▶ LOG (1)             │ │    response: 2ms       │
-│           │ │   ✓ log          ε0µs  │ │    GET /echo HTTP/1.1 │
-│           │ │                        │ │    ...                 │
-│           │ │                        │ │                        │
-│           │ │                        │ │ Request body           │
-│           │ │                        │ │  captured: 15/15 bytes │
-│           │ │                        │ │  {"key":"value"}       │
-│           │ │                        │ │                        │
-│           │ │                        │ │ Response body          │
-│           │ │                        │ │  captured: 12/12 bytes │
-│           │ │                        │ │  hello world           │
-└───────────┘ └────────────────────────┘ └────────────────────────┘
+┌─ rail ────┐ ┌─ center timeline ──────┐ ┌─ right detail ──────────┐
+│           │ │                        │ │                         │
+│ GET /     │ │ ▼ SERVER_REWRITE (1)   │ │ Step                    │
+│  200 · ε  │ │   ✓ core         ε0µs  │ │  phase: SERVER_REWRITE  │
+│           │ │                        │ │  handler: core          │
+│ POST /json│ │ ▼ REWRITE (1)          │ │  status: ✓ success      │
+│  200 · 2ms│ │   ✓ core         ε0µs  │ │  offset: ε0µs           │
+│           │ │                        │ │                         │
+│ GET /fail │ │ ▶ ACCESS (3)           │ │ Variables               │
+│  401      │ │   ✗ auth_request 1.2ms │ │  uri        read  /foo  │
+│  [fault]  │ │   ✓ auth_basic   ε0µs  │ │  status     set   200   │
+│           │ │   ✗ core          ε0µs │ │                         │
+│           │ │                        │ │ Upstream (http)         │
+│           │ │ ▶ CONTENT (1)          │ │  ▶ try 0 · 127.0.0.1    │
+│           │ │   ✓ proxy       342µs  │ │    bytes: 368           │
+│           │ │                        │ │    connect: 1ms         │
+│           │ │ ▶ LOG (1)              │ │    response: 2ms        │
+│           │ │   ✓ log          ε0µs  │ │    GET /echo HTTP/1.1   │
+│           │ │                        │ │    ...                  │
+│           │ │                        │ │                         │
+│           │ │                        │ │ Request body            │
+│           │ │                        │ │  captured: 15/15 bytes  │
+│           │ │                        │ │  {"key":"value"}        │
+│           │ │                        │ │                         │
+│           │ │                        │ │ Response body           │
+│           │ │                        │ │  captured: 12/12 bytes  │
+│           │ │                        │ │  hello world            │
+└───────────┘ └────────────────────────┘ └─────────────────────────┘
 ```
 
 ## Memory layout
@@ -234,23 +234,23 @@ Transaction {
 │  · start_msec, start_time                                    │
 │  · steps  (ngx_array_t, max 64)                              │
 │  · tries  (ngx_array_t, max 8)                               │
-│  · req_body, resp_body (pool-allocated, max 2048 each)      │
+│  · req_body, resp_body (pool-allocated, max 2048 each)       │
 │  · fault  (inline struct)                                    │
 └──────────────────────────────────────────────────────────────┘
 
 ┌── shared memory zone (slab-allocated, mutex-guarded) ────────┐
 │                                                              │
 │  ring buffer: 64 slots × 8192 bytes = 512 KB                 │
-│  ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬─────    │
+│  ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬─────     │
 │  │slot 0│slot 1│slot 2│slot 3│slot 4│ ...  │slot63│          │
 │  │comm. │comm. │empty │comm. │comm. │      │empty │          │
-│  └──────┴──────┴──────┴──────┴──────┴──────┴──────┴─────    │
+│  └──────┴──────┴──────┴──────┴──────┴──────┴──────┴─────     │
 │                                                              │
 │  session store: 32 entries                                   │
-│  ┌──────┬──────┬──────┬──────┬──────┬─────────              │
-│  │sess 1│sess 2│free  │sess 4│free  │ ...                   │
+│  ┌──────┬──────┬──────┬──────┬──────┬─────────               │
+│  │sess 1│sess 2│free  │sess 4│free  │ ...                    │
 │  │capt. │stopp.│      │capt. │      │                        │
-│  └──────┴──────┴──────┴──────┴──────┴─────────              │
+│  └──────┴──────┴──────┴──────┴──────┴─────────               │
 │                                                              │
 │  zone: 2 MB total (default test size)                        │
 └──────────────────────────────────────────────────────────────┘

@@ -9,9 +9,9 @@
 #include "ngx_http_trace_module.h"
 
 /*
- * `trace_zone zone=NAME:SIZE;` — declare the slab-backed shared-memory zone.
- * Parses the zone= parameter, registers the zone via ngx_shared_memory_add,
- * and wires its init callback. The zone data pointer is our per-zone shctx.
+  * `trace_zone <name> <size>;` — declare the slab-backed shared-memory zone.
+  * Registers the zone via ngx_shared_memory_add and wires its init callback.
+  * The zone data pointer is our per-zone shctx.
  */
 char *
 ngx_http_trace_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
