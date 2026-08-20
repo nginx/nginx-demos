@@ -47,10 +47,10 @@ static ngx_str_t  ngx_http_trace_default_redact[] = {
 /*
  * Is `name` (length n) in the effective redaction list for this location?
  *
- * The effective list is either the configured `trace_redact` array or, when the
- * operator never set one, the NFR-SEC-3 default set. Matching is
- * case-insensitive because HTTP header names are, and tolerates a leading '$'
- * so the same directive can name variables and headers interchangeably.
+ * The effective list is the NFR-SEC-3 default set plus any configured
+ * `trace_redact` names. Matching is case-insensitive because HTTP header names
+ * are, and tolerates a leading '$' so the same directive can name variables
+ * and headers interchangeably.
  */
 ngx_int_t
 ngx_http_trace_redact_match(ngx_http_trace_loc_conf_t *tlcf, u_char *name,
@@ -63,32 +63,35 @@ ngx_http_trace_redact_match(ngx_http_trace_loc_conf_t *tlcf, u_char *name,
         return 0;
     }
 
-    if (tlcf != NULL && tlcf->redact != NULL
-        && tlcf->redact != NGX_CONF_UNSET_PTR)
-    {
+    list  = ngx_http_trace_default_redact;
+    nelts = sizeof(ngx_http_trace_default_redact) / sizeof(ngx_str_t);
+
+    for ( ;; ) {
+        for (i = 0; i < nelts; i++) {
+            item = list[i];
+
+            /* accept "$name" and "name" spellings alike */
+            if (item.len > 0 && item.data[0] == '$') {
+                item.data++;
+                item.len--;
+            }
+
+            if (item.len == n
+                && ngx_strncasecmp(item.data, name, n) == 0)
+            {
+                return 1;
+            }
+        }
+
+        if (tlcf == NULL || tlcf->redact == NULL
+            || tlcf->redact == NGX_CONF_UNSET_PTR
+            || list != ngx_http_trace_default_redact)
+        {
+            break;
+        }
+
         list  = tlcf->redact->elts;
         nelts = tlcf->redact->nelts;
-
-    } else {
-        /* NFR-SEC-3: secure by default when unconfigured. */
-        list  = ngx_http_trace_default_redact;
-        nelts = sizeof(ngx_http_trace_default_redact) / sizeof(ngx_str_t);
-    }
-
-    for (i = 0; i < nelts; i++) {
-        item = list[i];
-
-        /* accept "$name" and "name" spellings alike */
-        if (item.len > 0 && item.data[0] == '$') {
-            item.data++;
-            item.len--;
-        }
-
-        if (item.len == n
-            && ngx_strncasecmp(item.data, name, n) == 0)
-        {
-            return 1;
-        }
     }
 
     return 0;

@@ -128,11 +128,9 @@ Cookie: session=cookiesecret789
 --- response_body_unlike eval
 [qr/(?!)/, qr/mixedcasesecret111/]
 
-=== TEST 6: an explicit list REPLACES the default set
-# This is the sharp edge of the design and is asserted deliberately: once the
-# operator writes trace_redact, they own the list. `x-only` is redacted and
-# Authorization is not. Documenting this in a test stops someone "fixing" it
-# into a merge later without realising it changes configured behavior.
+=== TEST 6: an explicit list ADDS to the default set
+# The mandatory default names must stay redacted even when the operator adds a
+# custom name via trace_redact.
 --- http_config
     trace_zone zr6 1m;
 --- config
@@ -150,10 +148,8 @@ Cookie: session=cookiesecret789
 ["GET /r6", "GET /trace/last"]
 --- error_code eval
 [200, 200]
---- response_body_like eval
-[qr//, qr/kept888/]
 --- response_body_unlike eval
-[qr/(?!)/, qr/gone999/]
+[qr/(?!)/, qr/gone999/, qr/kept888/]
 
 === TEST 7: a watched variable with a redacted name is masked, not just headers
 # Redaction covers the variable snapshot too (NFR-SEC-2), and there the mask is
