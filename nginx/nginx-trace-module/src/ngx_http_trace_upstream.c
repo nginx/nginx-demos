@@ -9,13 +9,11 @@
 #include "ngx_http_trace_module.h"
 
 /*
- * Log a byte range with stable markers, escaping nothing (spike: raw bytes).
+ * Log a stable upstream marker without payload bytes.
  *
- * M8.6 (NFR-SEC-7): this is the one place in the module that puts raw upstream
- * bytes into the error_log, where they are outside the redaction pass and land
- * in a file with different permissions than the trace API. It is therefore
- * suppressed under `trace_hardened on`, and demoted to NGX_LOG_DEBUG otherwise
- * so a default production error_log never receives payload bytes.
+ * Diagnostics may report byte counts for traced upstream traffic, but must never
+ * emit the captured bytes themselves (FR-LOG-6 / NFR-SEC-10). The request must
+ * also be one whose resolved trace decision kept upstream capture enabled.
  */
 void
 ngx_http_trace_log_bytes(ngx_http_request_t *r, const char *what,
@@ -27,14 +25,18 @@ ngx_http_trace_log_bytes(ngx_http_request_t *r, const char *what,
         return;
     }
 
+    if (!ngx_http_trace_upstream_enabled(r)) {
+        return;
+    }
+
     mcf = ngx_http_get_module_main_conf(r, ngx_http_trace_module);
     if (mcf != NULL && mcf->hardened == 1) {
         return;                         /* NFR-SEC-7: never emit payload */
     }
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "ngx-trace: upstream-%s-bytes >>>%*s<<<",
-                   what, (size_t) (end - start), start);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ngx-trace: upstream-%s-bytes %uz",
+                   what, (size_t) (end - start));
 }
 
 /*
@@ -50,6 +52,10 @@ ngx_http_trace_log_request_bufs(ngx_http_request_t *r,
     ngx_chain_t          *cl;
 
     if (ctx->request_logged) {
+        return;
+    }
+
+    if (!ngx_http_trace_upstream_enabled(r)) {
         return;
     }
 
@@ -439,9 +445,8 @@ ngx_http_trace_create_request_wrap(ngx_http_request_t *r)
  * byte-exact response header block as received) before delegating to the real
  * proxy process_header, then returns its code unchanged (FR-UP-3, FR-UP-5).
  *
- * process_header may be called multiple times on partial reads; we log the
- * currently-buffered bytes each call — for the spike that is sufficient to
- * prove byte-exact access.
+ * process_header may be called multiple times on partial reads; we emit at
+ * most one metadata-only marker per request.
  */
 ngx_int_t
 ngx_http_trace_process_header_wrap(ngx_http_request_t *r)
@@ -476,7 +481,7 @@ ngx_http_trace_process_header_wrap(ngx_http_request_t *r)
      * even when the real process_header fires on partial reads (M10.6). */
     pos = u->buffer.pos;
 
-    if (!ctx->response_logged) {
+    if (ngx_http_trace_upstream_enabled(r) && !ctx->response_logged) {
         ngx_http_trace_log_bytes(r, "response", pos, u->buffer.last);
         ctx->response_logged = 1;
     }
@@ -660,14 +665,15 @@ ngx_http_trace_precontent_handler(ngx_http_request_t *r)
 
     /*
      * Reuse the per-request ctx created by the POST_READ selector (single ctx
-     * slot per module). If the selector declined to trace this request there is
-     * still a ctx (with no_trace set) — we save the callbacks into it so the
-     * byte-exact capture spike keeps working independent of the trace decision.
-     * If somehow there is no ctx (selector never ran), decline and change
-     * nothing (FR-UP-7 degrade).
+     * slot per module). PRECONTENT runs after FIND_CONFIG, so the resolved trace
+     * decision is now knowable; only traced requests should be wrapped.
      */
     ctx = ngx_http_trace_get_ctx(r);
     if (ctx == NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (!ngx_http_trace_decide(r, ctx)) {
         return NGX_DECLINED;
     }
 

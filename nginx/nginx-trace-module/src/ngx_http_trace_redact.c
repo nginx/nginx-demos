@@ -44,41 +44,63 @@ static ngx_str_t  ngx_http_trace_default_redact[] = {
 };
 
 
+static ngx_int_t ngx_http_trace_redact_list_match(ngx_str_t *list,
+    ngx_uint_t nelts, u_char *name, size_t n);
+static ngx_int_t ngx_http_trace_body_contains(u_char *buf, size_t len,
+    u_char *needle, size_t n);
+static ngx_int_t ngx_http_trace_body_sensitive_content_type(ngx_str_t *content_type);
+static ngx_int_t ngx_http_trace_body_contains_sensitive_name(
+    ngx_http_trace_loc_conf_t *tlcf, u_char *buf, size_t len);
+static void ngx_http_trace_redact_body_preview(ngx_http_request_t *r,
+    u_char **buf, size_t *len, unsigned *binary);
+
+
 /*
  * Is `name` (length n) in the effective redaction list for this location?
  *
- * The effective list is either the configured `trace_redact` array or, when the
- * operator never set one, the NFR-SEC-3 default set. Matching is
- * case-insensitive because HTTP header names are, and tolerates a leading '$'
- * so the same directive can name variables and headers interchangeably.
+ * The effective list is the mandatory default set plus any configured
+ * `trace_redact` entries. Matching is case-insensitive because HTTP header names
+ * are, and tolerates a leading '$' so the same directive can name variables and
+ * headers interchangeably.
  */
 ngx_int_t
 ngx_http_trace_redact_match(ngx_http_trace_loc_conf_t *tlcf, u_char *name,
     size_t n)
 {
-    ngx_str_t   *list, item;
-    ngx_uint_t   i, nelts;
-
     if (name == NULL || n == 0) {
         return 0;
+    }
+
+    if (ngx_http_trace_redact_list_match(ngx_http_trace_default_redact,
+            sizeof(ngx_http_trace_default_redact) / sizeof(ngx_str_t), name, n))
+    {
+        return 1;
     }
 
     if (tlcf != NULL && tlcf->redact != NULL
         && tlcf->redact != NGX_CONF_UNSET_PTR)
     {
-        list  = tlcf->redact->elts;
-        nelts = tlcf->redact->nelts;
-
-    } else {
-        /* NFR-SEC-3: secure by default when unconfigured. */
-        list  = ngx_http_trace_default_redact;
-        nelts = sizeof(ngx_http_trace_default_redact) / sizeof(ngx_str_t);
+        if (ngx_http_trace_redact_list_match(tlcf->redact->elts,
+                tlcf->redact->nelts, name, n))
+        {
+            return 1;
+        }
     }
+
+    return 0;
+}
+
+
+static ngx_int_t
+ngx_http_trace_redact_list_match(ngx_str_t *list, ngx_uint_t nelts, u_char *name,
+    size_t n)
+{
+    ngx_str_t   item;
+    ngx_uint_t  i;
 
     for (i = 0; i < nelts; i++) {
         item = list[i];
 
-        /* accept "$name" and "name" spellings alike */
         if (item.len > 0 && item.data[0] == '$') {
             item.data++;
             item.len--;
@@ -209,14 +231,16 @@ ngx_http_trace_redact_header_block(ngx_http_request_t *r,
  *     which is where `Authorization` actually reaches shm (AC-11);
  *   - gRPC trailer messages, which are metadata and in scope per NFR-SEC-8.
  *
- * Body previews are NOT masked here: they are already gated behind an opt-in
- * directive and are captured through ngx_http_trace_body_append(), which
- * applies the content-type policy at capture time.
+ * Body previews are also checked here, just before serialization. A preview is
+ * suppressed wholesale when its content type is one of the known sensitive body
+ * classes (form/grpc/protobuf) or when the preview bytes themselves contain a
+ * sensitive configured/default name such as `authorization` or `x-api-key`.
  */
 void
 ngx_http_trace_redact_ctx(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
 {
     ngx_http_trace_loc_conf_t  *tlcf;
+    ngx_str_t                  *req_content_type, *resp_content_type;
     ngx_http_trace_step_t      *steps;
     ngx_http_trace_var_t       *vars;
     ngx_http_trace_try_t       *tries;
@@ -227,6 +251,18 @@ ngx_http_trace_redact_ctx(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
     }
 
     tlcf = ngx_http_get_module_loc_conf(r, ngx_http_trace_module);
+    req_content_type = NULL;
+    resp_content_type = NULL;
+
+    if (r->headers_in.content_type != NULL
+        && r->headers_in.content_type->value.len)
+    {
+        req_content_type = &r->headers_in.content_type->value;
+    }
+
+    if (ctx->resp_content_type.len) {
+        resp_content_type = &ctx->resp_content_type;
+    }
 
     /* (a) watched variable values. */
     if (ctx->steps != NULL) {
@@ -258,6 +294,140 @@ ngx_http_trace_redact_ctx(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
                                                &tries[i].response_headers);
         }
     }
+
+    if (ctx->req_body != NULL
+        && (ngx_http_trace_body_sensitive_content_type(req_content_type)
+            || ngx_http_trace_body_contains_sensitive_name(tlcf, ctx->req_body,
+                                                           ctx->req_body_len)))
+    {
+        ngx_http_trace_redact_body_preview(r, &ctx->req_body,
+                                           &ctx->req_body_len,
+                                           &ctx->req_body_binary);
+    }
+
+    if (ctx->resp_body != NULL
+        && (ngx_http_trace_body_sensitive_content_type(resp_content_type)
+            || ngx_http_trace_body_contains_sensitive_name(tlcf, ctx->resp_body,
+                                                           ctx->resp_body_len)))
+    {
+        ngx_http_trace_redact_body_preview(r, &ctx->resp_body,
+                                           &ctx->resp_body_len,
+                                           &ctx->resp_body_binary);
+    }
+}
+
+
+static ngx_int_t
+ngx_http_trace_body_contains(u_char *buf, size_t len, u_char *needle, size_t n)
+{
+    size_t  i;
+
+    if (buf == NULL || needle == NULL || len < n || n == 0) {
+        return 0;
+    }
+
+    for (i = 0; i + n <= len; i++) {
+        if (ngx_strncasecmp(buf + i, needle, n) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+static ngx_int_t
+ngx_http_trace_body_sensitive_content_type(ngx_str_t *content_type)
+{
+    static u_char  form[] = "application/x-www-form-urlencoded";
+    static u_char  multipart[] = "multipart/form-data";
+    static u_char  grpc[] = "application/grpc";
+    static u_char  protobuf[] = "application/protobuf";
+    static u_char  xprotobuf[] = "application/x-protobuf";
+
+    if (content_type == NULL || content_type->len == 0) {
+        return 0;
+    }
+
+    if (ngx_http_trace_body_contains(content_type->data, content_type->len,
+            form, sizeof(form) - 1)
+        || ngx_http_trace_body_contains(content_type->data, content_type->len,
+            multipart, sizeof(multipart) - 1)
+        || ngx_http_trace_body_contains(content_type->data, content_type->len,
+            grpc, sizeof(grpc) - 1)
+        || ngx_http_trace_body_contains(content_type->data, content_type->len,
+            protobuf, sizeof(protobuf) - 1)
+        || ngx_http_trace_body_contains(content_type->data, content_type->len,
+            xprotobuf, sizeof(xprotobuf) - 1))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+
+static ngx_int_t
+ngx_http_trace_body_contains_sensitive_name(ngx_http_trace_loc_conf_t *tlcf,
+    u_char *buf, size_t len)
+{
+    ngx_str_t   *list, item;
+    ngx_uint_t   i, nelts;
+
+    list = ngx_http_trace_default_redact;
+    nelts = sizeof(ngx_http_trace_default_redact) / sizeof(ngx_str_t);
+
+    for (i = 0; i < nelts; i++) {
+        item = list[i];
+        if (item.len > 0 && item.data[0] == '$') {
+            item.data++;
+            item.len--;
+        }
+
+        if (ngx_http_trace_body_contains(buf, len, item.data, item.len)) {
+            return 1;
+        }
+    }
+
+    if (tlcf != NULL && tlcf->redact != NULL
+        && tlcf->redact != NGX_CONF_UNSET_PTR)
+    {
+        list = tlcf->redact->elts;
+        nelts = tlcf->redact->nelts;
+
+        for (i = 0; i < nelts; i++) {
+            item = list[i];
+            if (item.len > 0 && item.data[0] == '$') {
+                item.data++;
+                item.len--;
+            }
+
+            if (ngx_http_trace_body_contains(buf, len, item.data, item.len)) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+static void
+ngx_http_trace_redact_body_preview(ngx_http_request_t *r, u_char **buf,
+    size_t *len, unsigned *binary)
+{
+    ngx_str_t  s;
+
+    if (buf == NULL || *buf == NULL || len == NULL || *len == 0) {
+        return;
+    }
+
+    s.data = *buf;
+    s.len = *len;
+    ngx_http_trace_redact_value(r, &s);
+    *buf = s.data;
+    *len = s.len;
+    *binary = 0;
 }
 
 
