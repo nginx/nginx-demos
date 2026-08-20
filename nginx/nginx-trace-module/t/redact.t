@@ -271,3 +271,32 @@ GET /r11
 body-intact
 --- response_headers
 Set-Cookie: sid=clientmustsee444
+
+=== TEST 12: sensitive JSON body previews are suppressed before serialization
+# Body capture remains enabled, but JSON payload bytes must not enter shm.
+--- http_config
+    trace_zone zr12 1m;
+--- config
+    location = /r12 {
+        trace on;
+        trace_body_capture both;
+        proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT/br12;
+    }
+    location = /br12 {
+        default_type application/json;
+        return 200 "{\"token\":\"respsecret12\"}";
+    }
+    location = /trace/last { trace_control; }
+--- request eval
+["POST /r12
+{\"token\":\"reqsecret12\"}", "GET /trace/last"]
+--- more_headers eval
+["Content-Type: application/json", ""]
+--- error_code eval
+[200, 200]
+--- response_body_like eval
+[qr//, qr/"request_body"\s*:\s*\{[^}]*"captured_bytes"\s*:\s*0[^}]*"total_bytes"\s*:\s*[1-9]\d*/s]
+--- response_body_like eval
+[qr//, qr/"response_body"\s*:\s*\{[^}]*"captured_bytes"\s*:\s*0[^}]*"content_type"\s*:\s*"application\/json"/s]
+--- response_body_unlike eval
+[qr/(?!)/, qr/reqsecret12|respsecret12|"request_body"[^}]*"preview"|"response_body"[^}]*"preview"/s]

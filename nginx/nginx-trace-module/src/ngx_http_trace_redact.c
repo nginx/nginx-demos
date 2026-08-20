@@ -44,6 +44,11 @@ static ngx_str_t  ngx_http_trace_default_redact[] = {
 };
 
 
+static ngx_int_t ngx_http_trace_sensitive_content_type(ngx_str_t *type);
+static void ngx_http_trace_suppress_body_preview(u_char **buf, size_t *len,
+    off_t total, unsigned *truncated, unsigned *binary);
+
+
 /*
  * Is `name` (length n) in the effective redaction list for this location?
  *
@@ -207,11 +212,9 @@ ngx_http_trace_redact_header_block(ngx_http_request_t *r,
  *   - watch-list variable values whose name is sensitive (NFR-SEC-2);
  *   - the byte-exact upstream request + response header blocks of every try,
  *     which is where `Authorization` actually reaches shm (AC-11);
- *   - gRPC trailer messages, which are metadata and in scope per NFR-SEC-8.
- *
- * Body previews are NOT masked here: they are already gated behind an opt-in
- * directive and are captured through ngx_http_trace_body_append(), which
- * applies the content-type policy at capture time.
+ *   - gRPC trailer messages, which are metadata and in scope per NFR-SEC-8;
+ *   - request/response body previews whose content type is sensitive, which are
+ *     suppressed before any payload bytes enter the ring (NFR-SEC-1/2).
  */
 void
 ngx_http_trace_redact_ctx(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
@@ -257,6 +260,134 @@ ngx_http_trace_redact_ctx(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
             ngx_http_trace_redact_header_block(r, tlcf,
                                                &tries[i].response_headers);
         }
+    }
+
+    if (r->headers_in.content_type != NULL
+        && ngx_http_trace_sensitive_content_type(
+               &r->headers_in.content_type->value))
+    {
+        ngx_http_trace_suppress_body_preview(&ctx->req_body, &ctx->req_body_len,
+                                             ctx->req_body_total,
+                                             &ctx->req_body_truncated,
+                                             &ctx->req_body_binary);
+    }
+
+    if (ngx_http_trace_sensitive_content_type(&ctx->resp_content_type)) {
+        ngx_http_trace_suppress_body_preview(&ctx->resp_body, &ctx->resp_body_len,
+                                             ctx->resp_body_total,
+                                             &ctx->resp_body_truncated,
+                                             &ctx->resp_body_binary);
+    }
+}
+
+
+static ngx_int_t
+ngx_http_trace_sensitive_content_type(ngx_str_t *type)
+{
+    u_char  *p, *end;
+    size_t   len;
+
+    if (type == NULL || type->data == NULL || type->len == 0) {
+        return 0;
+    }
+
+    p = type->data;
+    end = type->data + type->len;
+
+    while (p < end && (*p == ' ' || *p == '\t')) {
+        p++;
+    }
+
+    while (end > p && (*(end - 1) == ' ' || *(end - 1) == '\t')) {
+        end--;
+    }
+
+    if (p == end) {
+        return 0;
+    }
+
+    len = (size_t) (end - p);
+    end = ngx_strlchr(p, end, ';');
+    if (end != NULL) {
+        len = (size_t) (end - p);
+        while (len > 0 && (p[len - 1] == ' ' || p[len - 1] == '\t')) {
+            len--;
+        }
+    }
+
+    if (len == sizeof("application/json") - 1
+        && ngx_strncasecmp(p, (u_char *) "application/json", len) == 0)
+    {
+        return 1;
+    }
+
+    if (len == sizeof("application/xml") - 1
+        && ngx_strncasecmp(p, (u_char *) "application/xml", len) == 0)
+    {
+        return 1;
+    }
+
+    if (len == sizeof("text/xml") - 1
+        && ngx_strncasecmp(p, (u_char *) "text/xml", len) == 0)
+    {
+        return 1;
+    }
+
+    if (len == sizeof("application/x-www-form-urlencoded") - 1
+        && ngx_strncasecmp(p, (u_char *) "application/x-www-form-urlencoded",
+                           len) == 0)
+    {
+        return 1;
+    }
+
+    if (len == sizeof("multipart/form-data") - 1
+        && ngx_strncasecmp(p, (u_char *) "multipart/form-data", len) == 0)
+    {
+        return 1;
+    }
+
+    if (len > sizeof("application/") - 1
+        && ngx_strncasecmp(p, (u_char *) "application/",
+                           sizeof("application/") - 1) == 0)
+    {
+        if (len >= sizeof("+json") - 1
+            && ngx_strncasecmp(p + len - (sizeof("+json") - 1),
+                               (u_char *) "+json",
+                               sizeof("+json") - 1) == 0)
+        {
+            return 1;
+        }
+
+        if (len >= sizeof("+xml") - 1
+            && ngx_strncasecmp(p + len - (sizeof("+xml") - 1),
+                               (u_char *) "+xml",
+                               sizeof("+xml") - 1) == 0)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+static void
+ngx_http_trace_suppress_body_preview(u_char **buf, size_t *len, off_t total,
+    unsigned *truncated, unsigned *binary)
+{
+    if (buf == NULL || len == NULL || *buf == NULL || *len == 0 || total == 0) {
+        return;
+    }
+
+    *buf = NULL;
+    *len = 0;
+
+    if (truncated != NULL) {
+        *truncated = 1;
+    }
+
+    if (binary != NULL) {
+        *binary = 0;
     }
 }
 
