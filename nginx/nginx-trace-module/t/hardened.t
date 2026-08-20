@@ -11,8 +11,8 @@
 # Two guarantees are asserted:
 #   1. body capture is force-disabled even where explicitly configured — the
 #      global switch WINS over the local directive, not the other way round;
-#   2. the raw-byte error_log emit inherited from the M0 spike is suppressed
-#      entirely, since those bytes bypass the M8.0 redaction pass.
+#   2. raw upstream bytes never reach the error_log, and hardened mode still
+#      preserves that guarantee.
 #
 # Everything else about tracing must keep working: hardened mode removes payload
 # capture, not observability.
@@ -64,9 +64,7 @@ __DATA__
 --- response_body_like eval
 [qr//, qr/"response_body"[^}]*"preview"\s*:\s*"captured-h2"/]
 
-=== TEST 3: hardened mode suppresses the raw upstream-bytes debug emit
-# Those bytes are outside the redaction pass and land in the error_log, so under
-# hardened mode they must not be written even at debug level.
+=== TEST 3: hardened mode keeps raw upstream bytes out of the error log
 --- http_config
     trace_zone zh3 1m;
     trace_hardened on;
@@ -122,9 +120,9 @@ ngx-trace: upstream-request-bytes
 --- response_body_like eval
 [qr//, qr/"upstream".*"tries".*"request"/s]
 
-=== TEST 6: trace_hardened off behaves as the default (emit present at debug)
-# Proves the flag is genuinely wired to the switch rather than the emit having
-# been removed unconditionally.
+=== TEST 6: trace_hardened off also keeps raw upstream bytes out of the error log
+# Raw payload bytes are no longer written to the error_log at all, regardless of
+# the hardened flag.
 --- http_config
     trace_zone zh6 1m;
     trace_hardened off;
@@ -137,7 +135,7 @@ ngx-trace: upstream-request-bytes
 --- request
 GET /h6
 --- error_code: 200
---- error_log
+--- no_error_log
 ngx-trace: upstream-request-bytes
 
 === TEST 7: trace_hardened is rejected outside the main context

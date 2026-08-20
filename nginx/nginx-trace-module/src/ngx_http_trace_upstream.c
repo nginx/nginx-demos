@@ -403,7 +403,7 @@ ngx_http_trace_harvest_state(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
 
 /*
  * Trampoline for u->create_request. Calls the real proxy create_request first
- * (which fills u->request_bufs), then logs the byte-exact serialized request.
+ * (which fills u->request_bufs), then captures the byte-exact serialized request.
  * Returns the original's return code unchanged so behaviour is identical
  * (FR-UP-2, FR-UP-5).
  *
@@ -412,7 +412,7 @@ ngx_http_trace_harvest_state(ngx_http_request_t *r, ngx_http_trace_ctx_t *ctx)
  * BEFORE control returns to our content-handler trampoline — so at that first
  * call u->create_request is still the original pointer and this wrap does not
  * run. It DOES run on retries/reinit. The synchronous first-call case is
- * covered by lazily logging request_bufs from the process_header wrap, which
+ * covered by lazily capturing request_bufs from the process_header wrap, which
  * reliably fires once the response header arrives. Between the two we always
  * capture the request bytes exactly once.
  */
@@ -426,8 +426,7 @@ ngx_http_trace_create_request_wrap(ngx_http_request_t *r)
 
     rc = ctx->orig_create_request(r);
 
-    if (rc == NGX_OK) {
-        ngx_http_trace_log_request_bufs(r, ctx);
+    if (rc == NGX_OK && ngx_http_trace_upstream_enabled(r)) {
         ngx_http_trace_capture_request(r, ctx);
     }
 
@@ -435,32 +434,17 @@ ngx_http_trace_create_request_wrap(ngx_http_request_t *r)
 }
 
 /*
- * Trampoline for u->process_header. Snapshots the raw u->buffer region (the
- * byte-exact response header block as received) before delegating to the real
- * proxy process_header, then returns its code unchanged (FR-UP-3, FR-UP-5).
- *
- * process_header may be called multiple times on partial reads; we log the
- * currently-buffered bytes each call — for the spike that is sufficient to
- * prove byte-exact access.
+ * Trampoline for u->process_header. Captures the request before delegating to
+ * the real proxy parser, then snapshots the parsed upstream response headers
+ * once the parse succeeds. Returns the original code unchanged (FR-UP-3, FR-UP-5).
  */
 ngx_int_t
 ngx_http_trace_process_header_wrap(ngx_http_request_t *r)
 {
-    ngx_http_upstream_t   *u;
     ngx_http_trace_ctx_t  *ctx;
-    u_char                *pos;
     ngx_int_t              rc;
 
-    u = r->upstream;
     ctx = ngx_http_trace_get_ctx(r);
-
-    /*
-     * Lazily capture the request bytes here: by the time the response header
-     * is being processed, u->request_bufs is populated and stable, and this
-     * wrap is guaranteed to have been installed (it fired). This covers the
-     * synchronous-first-create_request case described above.
-     */
-    ngx_http_trace_log_request_bufs(r, ctx);
 
     /*
      * M3.1: capture the byte-exact request NOW, before orig_process_header
@@ -470,16 +454,6 @@ ngx_http_trace_process_header_wrap(ngx_http_request_t *r)
      * first-create_request case (see note above).
      */
     ngx_http_trace_capture_request(r, ctx);
-
-    /* snapshot the header bytes present in the buffer at this point.
-     * Guarded by response_logged so we emit at most once per request
-     * even when the real process_header fires on partial reads (M10.6). */
-    pos = u->buffer.pos;
-
-    if (!ctx->response_logged) {
-        ngx_http_trace_log_bytes(r, "response", pos, u->buffer.last);
-        ctx->response_logged = 1;
-    }
 
     rc = ctx->orig_process_header(r);
 
@@ -625,11 +599,10 @@ ngx_http_trace_content_handler_wrap(ngx_http_request_t *r)
      * process_header (fired later on the response) is also observed, and so
      * any retry's create_request goes through our wrap too.
      */
-    if (r->upstream != NULL) {
-        ngx_http_trace_log_request_bufs(r, ctx);
+    if (r->upstream != NULL && ngx_http_trace_upstream_enabled(r)) {
         ngx_http_trace_capture_request(r, ctx);
+        ngx_http_trace_wrap_upstream_callbacks(r, ctx);
     }
-    ngx_http_trace_wrap_upstream_callbacks(r, ctx);
 
     return rc;
 }
@@ -660,14 +633,17 @@ ngx_http_trace_precontent_handler(ngx_http_request_t *r)
 
     /*
      * Reuse the per-request ctx created by the POST_READ selector (single ctx
-     * slot per module). If the selector declined to trace this request there is
-     * still a ctx (with no_trace set) — we save the callbacks into it so the
-     * byte-exact capture spike keeps working independent of the trace decision.
+     * slot per module). PRECONTENT runs after location resolution, so latch the
+     * trace decision here and only install the trampoline for traced requests.
      * If somehow there is no ctx (selector never ran), decline and change
      * nothing (FR-UP-7 degrade).
      */
     ctx = ngx_http_trace_get_ctx(r);
     if (ctx == NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (!ngx_http_trace_decide(r, ctx)) {
         return NGX_DECLINED;
     }
 
