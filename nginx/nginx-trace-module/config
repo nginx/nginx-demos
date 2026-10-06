@@ -1,0 +1,34 @@
+# config — nginx addon build script for ngx_http_trace_module.
+# Supports both --add-module (static) and --add-dynamic-module (dynamic),
+# per skill:conf-build-config.
+
+ngx_addon_name=ngx_http_trace_module
+
+# All translation units of the module. Every symbol is `ngx_http_trace_`-
+# prefixed and shares declarations through ngx_http_trace_module.h.
+ngx_http_trace_srcs=" \
+    $ngx_addon_dir/src/ngx_http_trace_module.c \
+    $ngx_addon_dir/src/ngx_http_trace_ctx.c \
+    $ngx_addon_dir/src/ngx_http_trace_shm.c \
+    $ngx_addon_dir/src/ngx_http_trace_json.c \
+    $ngx_addon_dir/src/ngx_http_trace_upstream.c \
+    $ngx_addon_dir/src/ngx_http_trace_api.c \
+    $ngx_addon_dir/src/ngx_http_trace_redact.c \
+    "
+
+ngx_http_trace_deps="$ngx_addon_dir/src/ngx_http_trace_module.h"
+
+if test -n "$ngx_module_link"; then
+    # nginx 1.9.11+ dynamic module support
+    ngx_module_type=HTTP
+    ngx_module_name=ngx_http_trace_module
+    ngx_module_srcs="$ngx_http_trace_srcs"
+    ngx_module_deps="$ngx_http_trace_deps"
+
+    . auto/module
+else
+    # legacy static module support
+    HTTP_MODULES="$HTTP_MODULES ngx_http_trace_module"
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_http_trace_srcs"
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ngx_http_trace_deps"
+fi

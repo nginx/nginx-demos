@@ -1,0 +1,427 @@
+=================================================================
+ ngx-trace test record
+ date (UTC) : 20260725T222122Z
+ nginx      : 1.27.0
+ image      : ngx-trace-dev:1.27.0
+=================================================================
+
+----- nginx -V -----
+nginx version: nginx/1.27.0
+built by gcc 12.2.0 (Debian 12.2.0-14+deb12u1) 
+built with OpenSSL 3.0.20 7 Apr 2026
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --with-compat --with-debug --with-http_v2_module --with-http_ssl_module --with-http_auth_request_module --with-stream --add-dynamic-module=/src/ngx-trace
+
+----- nginx -t (module load check) -----
+nginx: the configuration file /usr/local/nginx/conf/loadcheck.conf syntax is ok
+nginx: configuration file /usr/local/nginx/conf/loadcheck.conf test is successful
+
+----- prove -v t/ -----
+t/config.t TEST 2: location-scoped directives parse in a location block - timeout when waiting for the process 13 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 2: location-scoped directives parse in a location block - WARNING: killing the child process 13 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - timeout when waiting for the process 17 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - WARNING: killing the child process 17 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 4: trace_log_level accepts every level in the ladder - timeout when waiting for the process 21 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 4: trace_log_level accepts every level in the ladder - WARNING: killing the child process 21 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - timeout when waiting for the process 25 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - WARNING: killing the child process 25 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/config.t TEST 6: a main-conf directive is rejected in the location context - timeout when waiting for the process 29 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/config.t TEST 6: a main-conf directive is rejected in the location context - WARNING: killing the child process 29 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+nginx: [emerg] "trace_zone" directive is not allowed here in /src/ngx-trace/t/servroot/conf/nginx.conf:41
+WARNING: t/config.t TEST 6: a main-conf directive is rejected in the location context - 2026/07/25 22:21:59 [emerg] 32#0: \"trace_zone\" directive is not allowed here in /src/ngx-trace/t/servroot/conf/nginx.conf:41 at /usr/local/share/perl/5.36.0/Test/Nginx/Socket.pm line 1417.
+t/config.t ............ 
+ok 1 - t/config.t TEST 1: full directive surface parses; a request still succeeds - status code ok
+ok 2 - t/config.t TEST 1: full directive surface parses; a request still succeeds - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/config.t TEST 2: location-scoped directives parse in a location block - status code ok
+ok 4 - t/config.t TEST 2: location-scoped directives parse in a location block - response_body - response is expected (repeated req 0, req 0)
+ok 5 - t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - status code ok
+ok 6 - t/config.t TEST 3: trace on|off accepts explicit off; defaults leave request untouched - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/config.t TEST 4: trace_log_level accepts every level in the ladder - status code ok
+ok 8 - t/config.t TEST 4: trace_log_level accepts every level in the ladder - response_body - response is expected (repeated req 0, req 0)
+ok 9 - t/config.t TEST 5: trace_control location returns JSON (200) once a zone exists - status code ok
+ok 10 - t/config.t TEST 6: a main-conf directive is rejected in the location context - die as expected
+ok 11 - t/config.t TEST 6: a main-conf directive is rejected in the location context - pattern ""trace_zone" directive is not allowed here" matches a line in error.log (req 0)
+1..11
+ok
+t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - timeout when waiting for the process 39 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - WARNING: killing the child process 39 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t TEST 1: debug level emits the commit milestone - timeout when waiting for the process 43 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 1: debug level emits the commit milestone - WARNING: killing the child process 43 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - timeout when waiting for the process 47 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - WARNING: killing the child process 47 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 51 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 51 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/diag_log.t .......... 
+ok 1 - t/diag_log.t TEST 2: default level short-circuits the debug milestone - status code ok
+ok 2 - t/diag_log.t TEST 2: default level short-circuits the debug milestone - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+ok 3 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - status code ok
+ok 4 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - pattern "[trace] commit txn status=200 bytes=" matches a line in error.log (req 0)
+ok 5 - t/diag_log.t TEST 3: the commit diagnostic line carries only metadata, no payload - pattern "[trace] commit txn status=200 bytes=0 SECRETPAYLOAD" does not match a line in error.log (req 0)
+ok 6 - t/diag_log.t TEST 1: debug level emits the commit milestone - status code ok
+ok 7 - t/diag_log.t TEST 1: debug level emits the commit milestone - pattern "[trace] commit txn status=200" matches a line in error.log (req 0)
+ok 8 - t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - status code ok
+ok 9 - t/diag_log.t TEST 4: trace_log routes diagnostics to a dedicated file sink - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+1..9
+ok
+t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - timeout when waiting for the process 58 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - WARNING: killing the child process 58 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - timeout when waiting for the process 62 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - WARNING: killing the child process 62 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 66 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 66 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/grpc.t .............. 
+ok 1 - t/grpc.t TEST 1: a plain HTTP proxied request is classified protocol "http" - status code ok
+ok 2 - t/grpc.t TEST 1: a plain HTTP proxied request is classified protocol "http" - response_body_like - response is expected (g1)
+ok 3 - t/grpc.t TEST 1: a plain HTTP proxied request is classified protocol "http" - status code ok
+ok 4 - t/grpc.t TEST 1: a plain HTTP proxied request is classified protocol "http" - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/g1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":1000,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":1,"request":"GET /g1back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:22:25 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\ng1","response_truncated":false}]}})
+ok 5 - t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - status code ok
+ok 6 - t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - response_body_like - response is expected (g2)
+ok 7 - t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - status code ok
+ok 8 - t/grpc.t TEST 2: plain HTTP tries carry no gRPC trailer fields - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/g2","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /g2back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:22:32 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\ng2","response_truncated":false}]}})
+ok 9 - t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - status code ok
+ok 10 - t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - response_body_like - response is expected (g3)
+ok 11 - t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - status code ok
+ok 12 - t/grpc.t TEST 3: ordinary traffic is never misclassified as gRPC - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/application/grpc","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /g3back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:22:38 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\ng3","response_truncated":false}]}})
+1..12
+ok
+t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - timeout when waiting for the process 73 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - WARNING: killing the child process 73 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - timeout when waiting for the process 77 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - WARNING: killing the child process 77 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - timeout when waiting for the process 81 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - WARNING: killing the child process 81 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 85 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 85 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert.t ............. 
+ok 1 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - status code ok
+ok 2 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[error]" does not match a line in error.log (req 0)
+ok 4 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[alert]" does not match a line in error.log (req 0)
+ok 5 - t/inert.t TEST 1: module loads and config parses (nginx -t equivalent) - pattern "[emerg]" does not match a line in error.log (req 0)
+ok 6 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - status code ok
+ok 7 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - header X-Probe ok
+ok 8 - t/inert.t TEST 2: inert — plain static location is unchanged with module loaded - pattern "[error]" does not match a line in error.log (req 0)
+ok 9 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - status code ok
+ok 10 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - header X-Trace-State ok
+ok 11 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - response_body - response is expected (repeated req 0, req 0)
+ok 12 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[error]" does not match a line in error.log (req 0)
+ok 13 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[alert]" does not match a line in error.log (req 0)
+ok 14 - t/inert.t TEST 4: inert — explicit `trace off;` parses and leaves routing unchanged - pattern "[emerg]" does not match a line in error.log (req 0)
+ok 15 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - status code ok
+ok 16 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - response_body - response is expected (repeated req 0, req 0)
+ok 17 - t/inert.t TEST 3: inert — proxy route is untouched (routing identical) - pattern "[error]" does not match a line in error.log (req 0)
+1..17
+ok
+t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - timeout when waiting for the process 92 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - WARNING: killing the child process 92 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - timeout when waiting for the process 96 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - WARNING: killing the child process 96 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - timeout when waiting for the process 100 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - WARNING: killing the child process 100 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 104 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 104 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inert_mode.t ........ 
+ok 1 - t/inert_mode.t TEST 1: directives accepted with NO trace_zone; request still succeeds - status code ok
+ok 2 - t/inert_mode.t TEST 1: directives accepted with NO trace_zone; request still succeeds - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inert_mode.t TEST 2: control endpoint returns 503 when no zone is configured - status code ok
+ok 4 - t/inert_mode.t TEST 3: with a zone, the same control endpoint is available (not 503) - status code ok
+ok 5 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - status code ok
+ok 6 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/inert_mode.t TEST 4: inert mode is a true no-op — `trace on` request commits nothing - pattern "[trace] commit txn" does not match a line in error.log (req 0)
+1..7
+ok
+t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - timeout when waiting for the process 111 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - WARNING: killing the child process 111 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - timeout when waiting for the process 115 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - WARNING: killing the child process 115 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - timeout when waiting for the process 119 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - WARNING: killing the child process 119 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - timeout when waiting for the process 123 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - WARNING: killing the child process 123 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 127 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 127 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/inherit.t ........... 
+ok 1 - t/inherit.t TEST 1: location inherits `trace on` from the http scope - status code ok
+ok 2 - t/inherit.t TEST 1: location inherits `trace on` from the http scope - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - status code ok
+ok 4 - t/inherit.t TEST 2: location `trace off` overrides inherited `trace on` - response_body - response is expected (repeated req 0, req 0)
+ok 5 - t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - status code ok
+ok 6 - t/inherit.t TEST 3: server-scope `trace on` inherited by locations in that server - response_body - response is expected (repeated req 0, req 0)
+ok 7 - t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - status code ok
+ok 8 - t/inherit.t TEST 4: redact + watch lists inherit and a nested location extends scope - response_body - response is expected (repeated req 0, req 0)
+ok 9 - t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - status code ok
+ok 10 - t/inherit.t TEST 5: enum/numeric directives inherit from http and a location overrides - response_body - response is expected (repeated req 0, req 0)
+1..10
+ok
+t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - timeout when waiting for the process 134 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - WARNING: killing the child process 134 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - timeout when waiting for the process 138 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - WARNING: killing the child process 138 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - timeout when waiting for the process 142 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - WARNING: killing the child process 142 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - timeout when waiting for the process 146 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - WARNING: killing the child process 146 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 6: LOG phase handler does not disturb the response - timeout when waiting for the process 150 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 6: LOG phase handler does not disturb the response - WARNING: killing the child process 150 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t TEST 5: error_page interception still works (routing intact) - timeout when waiting for the process 154 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/phases.t TEST 5: error_page interception still works (routing intact) - WARNING: killing the child process 154 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 158 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 158 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/phases.t ............ 
+ok 1 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - status code ok
+ok 2 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/phases.t TEST 7: SERVER_REWRITE phase unaffected — server-level rewrite still applies - pattern "[error]" does not match a line in error.log (req 0)
+ok 4 - t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - status code ok
+ok 5 - t/phases.t TEST 3: ACCESS phase unaffected — auth_request still gates (403) - pattern "[error]" does not match a line in error.log (req 0)
+ok 6 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - status code ok
+ok 7 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - response_body - response is expected (repeated req 0, req 0)
+ok 8 - t/phases.t TEST 1: REWRITE phase unaffected — rewrite still rewrites - pattern "[error]" does not match a line in error.log (req 0)
+ok 9 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - status code ok
+ok 10 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - response_body - response is expected (repeated req 0, req 0)
+ok 11 - t/phases.t TEST 2: PRECONTENT phase unaffected — try_files still resolves - pattern "[error]" does not match a line in error.log (req 0)
+ok 12 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - status code ok
+ok 13 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - response_body - response is expected (repeated req 0, req 0)
+ok 14 - t/phases.t TEST 4: ACCESS phase unaffected — auth_request allows (200) - pattern "[error]" does not match a line in error.log (req 0)
+ok 15 - t/phases.t TEST 6: LOG phase handler does not disturb the response - status code ok
+ok 16 - t/phases.t TEST 6: LOG phase handler does not disturb the response - response_body - response is expected (repeated req 0, req 0)
+ok 17 - t/phases.t TEST 6: LOG phase handler does not disturb the response - pattern "[error]" does not match a line in error.log (req 0)
+ok 18 - t/phases.t TEST 5: error_page interception still works (routing intact) - status code ok
+ok 19 - t/phases.t TEST 5: error_page interception still works (routing intact) - response_body - response is expected (repeated req 0, req 0)
+ok 20 - t/phases.t TEST 5: error_page interception still works (routing intact) - pattern "[error]" does not match a line in error.log (req 0)
+1..20
+ok
+t/retry.t TEST 2: the successful (final) try carries the 200 status - timeout when waiting for the process 165 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/retry.t TEST 2: the successful (final) try carries the 200 status - WARNING: killing the child process 165 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/retry.t TEST 3: a single successful upstream produces exactly one try - timeout when waiting for the process 169 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/retry.t TEST 3: a single successful upstream produces exactly one try - WARNING: killing the child process 169 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 173 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 173 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/retry.t ............. 
+ok 1 - t/retry.t TEST 1: a retried request records two distinct tries - status code ok
+ok 2 - t/retry.t TEST 1: a retried request records two distinct tries - response_body_like - response is expected (r1ok)
+ok 3 - t/retry.t TEST 1: a retried request records two distinct tries - status code ok
+ok 4 - t/retry.t TEST 1: a retried request records two distinct tries - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/r1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":1000,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1","status":200,"bytes":0,"response_ms":0,"request":"GET /r1back HTTP/1.0\r\nHost: retry1\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:24:56 GMT\r\nContent-Type: text/plain\r\nContent-Length: 4\r\nConnection: close\r\n\r\nr1ok","response_truncated":false},{"seq":1,"peer":"127.0.0.1:1984","status":200,"bytes":146,"connect_ms":0,"response_ms":1,"request":"","request_truncated":false,"response_headers":"","response_truncated":false}]}})
+ok 5 - t/retry.t TEST 2: the successful (final) try carries the 200 status - status code ok
+ok 6 - t/retry.t TEST 2: the successful (final) try carries the 200 status - response_body_like - response is expected (r2ok)
+ok 7 - t/retry.t TEST 2: the successful (final) try carries the 200 status - status code ok
+ok 8 - t/retry.t TEST 2: the successful (final) try carries the 200 status - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/r2","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1","status":200,"bytes":0,"response_ms":0,"request":"GET /r2back HTTP/1.0\r\nHost: retry2\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:25:03 GMT\r\nContent-Type: text/plain\r\nContent-Length: 4\r\nConnection: close\r\n\r\nr2ok","response_truncated":false},{"seq":1,"peer":"127.0.0.1:1984","status":200,"bytes":146,"connect_ms":0,"response_ms":0,"request":"","request_truncated":false,"response_headers":"","response_truncated":false}]}})
+ok 9 - t/retry.t TEST 3: a single successful upstream produces exactly one try - status code ok
+ok 10 - t/retry.t TEST 3: a single successful upstream produces exactly one try - response_body_like - response is expected (r3ok)
+ok 11 - t/retry.t TEST 3: a single successful upstream produces exactly one try - status code ok
+ok 12 - t/retry.t TEST 3: a single successful upstream produces exactly one try - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/r3","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":1000,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":146,"connect_ms":0,"response_ms":1,"request":"GET /r3back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:25:09 GMT\r\nContent-Type: text/plain\r\nContent-Length: 4\r\nConnection: close\r\n\r\nr3ok","response_truncated":false}]}})
+1..12
+ok
+t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - timeout when waiting for the process 180 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - WARNING: killing the child process 180 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - timeout when waiting for the process 184 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - WARNING: killing the child process 184 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/select.t TEST 4: selection never alters routing (traced rewrite still rewrites) - timeout when waiting for the process 188 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/select.t TEST 4: selection never alters routing (traced rewrite still rewrites) - WARNING: killing the child process 188 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - timeout when waiting for the process 192 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - WARNING: killing the child process 192 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 196 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 196 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/select.t ............ 
+ok 1 - t/select.t TEST 1: a `trace on` location is selected and committed - status code ok
+ok 2 - t/select.t TEST 1: a `trace on` location is selected and committed - response_body_like - response is expected (on-body)
+ok 3 - t/select.t TEST 1: a `trace on` location is selected and committed - status code ok
+ok 4 - t/select.t TEST 1: a `trace on` location is selected and committed - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/on","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 5 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - status code ok
+ok 6 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - response_body_like - response is expected (seed)
+ok 7 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - status code ok
+ok 8 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - response_body_like - response is expected (nope)
+ok 9 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - status code ok
+ok 10 - t/select.t TEST 2: a location without `trace` is NOT selected (commits nothing) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/seed","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 11 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - status code ok
+ok 12 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - response_body_like - response is expected (seed3)
+ok 13 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - status code ok
+ok 14 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - response_body_like - response is expected (off3)
+ok 15 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - status code ok
+ok 16 - t/select.t TEST 3: `trace off` overrides an inherited `trace on` (not selected) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/seed3","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 17 - t/select.t TEST 4: selection never alters routing (traced rewrite still rewrites) - status code ok
+ok 18 - t/select.t TEST 4: selection never alters routing (traced rewrite still rewrites) - response_body - response is expected (repeated req 0, req 0)
+ok 19 - t/select.t TEST 4: selection never alters routing (traced rewrite still rewrites) - pattern "[error]" does not match a line in error.log (req 0)
+ok 20 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - status code ok
+ok 21 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - response_body_like - response is expected (first5)
+ok 22 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - status code ok
+ok 23 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - response_body_like - response is expected (second5)
+ok 24 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - status code ok
+ok 25 - t/select.t TEST 5: the latest traced request wins (commit overwrites, exactly once) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/second5","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+1..25
+ok
+t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - timeout when waiting for the process 203 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - WARNING: killing the child process 203 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - timeout when waiting for the process 207 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - WARNING: killing the child process 207 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 211 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 211 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/shm_roundtrip.t ..... 
+ok 1 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - status code ok
+ok 2 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - response_body_like - response is expected (backend-body)
+ok 3 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - status code ok
+ok 4 - t/shm_roundtrip.t TEST 1: proxied request is captured, control endpoint returns it as JSON - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/front","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":155,"connect_ms":0,"response_ms":0,"request":"GET /back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:25:49 GMT\r\nContent-Type: text/plain\r\nContent-Length: 12\r\nConnection: close\r\n\r\nbackend-body","response_truncated":false}]}})
+ok 5 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - status code ok
+ok 6 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - response_body_like - response is expected (created)
+ok 7 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - status code ok
+ok 8 - t/shm_roundtrip.t TEST 2: captured transaction records the request path and a status - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/api","status":201,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":201,"bytes":154,"connect_ms":0,"response_ms":0,"request":"GET /origin HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 201 Created\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:25:56 GMT\r\nContent-Type: text/plain\r\nContent-Length: 7\r\nConnection: close\r\n\r\ncreated","response_truncated":false}]}})
+ok 9 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - status code ok
+ok 10 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - response_body_like - response is expected (z)
+ok 11 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - status code ok
+ok 12 - t/shm_roundtrip.t TEST 3: control endpoint is valid JSON with a steps array - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/hit","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":143,"connect_ms":0,"response_ms":0,"request":"GET /z HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:26:02 GMT\r\nContent-Type: text/plain\r\nContent-Length: 1\r\nConnection: close\r\n\r\nz","response_truncated":false}]}})
+1..12
+ok
+t/status.t TEST 2: a 5xx response yields an error terminal step - timeout when waiting for the process 218 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/status.t TEST 2: a 5xx response yields an error terminal step - WARNING: killing the child process 218 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/status.t TEST 3: a 4xx response yields an error terminal step - timeout when waiting for the process 222 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/status.t TEST 3: a 4xx response yields an error terminal step - WARNING: killing the child process 222 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - timeout when waiting for the process 226 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - WARNING: killing the child process 226 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - timeout when waiting for the process 230 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - WARNING: killing the child process 230 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 234 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 234 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/status.t ............ 
+ok 1 - t/status.t TEST 1: a 2xx response yields a success terminal step - status code ok
+ok 2 - t/status.t TEST 1: a 2xx response yields a success terminal step - response_body_like - response is expected (ok1)
+ok 3 - t/status.t TEST 1: a 2xx response yields a success terminal step - status code ok
+ok 4 - t/status.t TEST 1: a 2xx response yields a success terminal step - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/ok1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 5 - t/status.t TEST 2: a 5xx response yields an error terminal step - status code ok
+ok 6 - t/status.t TEST 2: a 5xx response yields an error terminal step - response_body_like - response is expected (<html> <head><title>500 Internal Server Error</title></head> <body> <center><h1>500 Internal Server Error</h1></center> <hr><center>nginx/1.27.0</center> </body> </html>)
+ok 7 - t/status.t TEST 2: a 5xx response yields an error terminal step - status code ok
+ok 8 - t/status.t TEST 2: a 5xx response yields an error terminal step - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/boom2","status":500,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"error","type":"phase","vars":{}}]})
+ok 9 - t/status.t TEST 3: a 4xx response yields an error terminal step - status code ok
+ok 10 - t/status.t TEST 3: a 4xx response yields an error terminal step - response_body_like - response is expected (<html> <head><title>403 Forbidden</title></head> <body> <center><h1>403 Forbidden</h1></center> <hr><center>nginx/1.27.0</center> </body> </html>)
+ok 11 - t/status.t TEST 3: a 4xx response yields an error terminal step - status code ok
+ok 12 - t/status.t TEST 3: a 4xx response yields an error terminal step - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/forbidden3","status":403,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"error","type":"phase","vars":{}}]})
+ok 13 - t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - status code ok
+ok 14 - t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - response_body_like - response is expected (created4)
+ok 15 - t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - status code ok
+ok 16 - t/status.t TEST 4: the transaction top-level status mirrors the HTTP status - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/code4","status":201,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 17 - t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - status code ok
+ok 18 - t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - response_body_like - response is expected (<html> <head><title>302 Found</title></head> <body> <center><h1>302 Found</h1></center> <hr><center>nginx/1.27.0</center> </body> </html>)
+ok 19 - t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - status code ok
+ok 20 - t/status.t TEST 5: a 3xx redirect is NOT an error (terminal step stays success) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/redir5","status":302,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+1..20
+ok
+t/timeline.t TEST 2: every step carries a t_offset_us and a status - timeout when waiting for the process 241 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/timeline.t TEST 2: every step carries a t_offset_us and a status - WARNING: killing the child process 241 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/timeline.t TEST 3: steps are numbered by an increasing seq - timeout when waiting for the process 245 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/timeline.t TEST 3: steps are numbered by an increasing seq - WARNING: killing the child process 245 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - timeout when waiting for the process 249 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - WARNING: killing the child process 249 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - timeout when waiting for the process 253 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - WARNING: killing the child process 253 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 257 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 257 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/timeline.t .......... 
+ok 1 - t/timeline.t TEST 1: timeline records the registrable phases in order - status code ok
+ok 2 - t/timeline.t TEST 1: timeline records the registrable phases in order - response_body_like - response is expected (t1)
+ok 3 - t/timeline.t TEST 1: timeline records the registrable phases in order - status code ok
+ok 4 - t/timeline.t TEST 1: timeline records the registrable phases in order - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/t1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /t1back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:26:42 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nt1","response_truncated":false}]}})
+ok 5 - t/timeline.t TEST 2: every step carries a t_offset_us and a status - status code ok
+ok 6 - t/timeline.t TEST 2: every step carries a t_offset_us and a status - response_body_like - response is expected (t2)
+ok 7 - t/timeline.t TEST 2: every step carries a t_offset_us and a status - status code ok
+ok 8 - t/timeline.t TEST 2: every step carries a t_offset_us and a status - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/t2","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 9 - t/timeline.t TEST 3: steps are numbered by an increasing seq - status code ok
+ok 10 - t/timeline.t TEST 3: steps are numbered by an increasing seq - response_body_like - response is expected (t3)
+ok 11 - t/timeline.t TEST 3: steps are numbered by an increasing seq - status code ok
+ok 12 - t/timeline.t TEST 3: steps are numbered by an increasing seq - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/t3","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 13 - t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - status code ok
+ok 14 - t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - response_body_like - response is expected (dst4)
+ok 15 - t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - status code ok
+ok 16 - t/timeline.t TEST 4: FIND_CONFIG is inferred across a rewrite (location changes) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/dst4","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"FIND_CONFIG","handler":"core","t_offset_us":0,"status":"success","type":"phase","note":"location/uri selected","vars":{}},{"seq":2,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 17 - t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - status code ok
+ok 18 - t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - response_body_like - response is expected (t5)
+ok 19 - t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - status code ok
+ok 20 - t/timeline.t TEST 5: LOG is always the terminal step, appended last in the timeline - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/t5","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /t5back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:27:08 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nt5","response_truncated":false}]}})
+1..20
+ok
+t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - timeout when waiting for the process 264 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - WARNING: killing the child process 264 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream.t TEST 3: the try records the received response header block and status - timeout when waiting for the process 268 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream.t TEST 3: the try records the received response header block and status - WARNING: killing the child process 268 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - timeout when waiting for the process 272 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - WARNING: killing the child process 272 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream.t TEST 5: a non-proxied traced request has no upstream section - timeout when waiting for the process 276 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream.t TEST 5: a non-proxied traced request has no upstream section - WARNING: killing the child process 276 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 280 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 280 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream.t .......... 
+ok 1 - t/upstream.t TEST 1: proxied request produces an upstream section with one try - status code ok
+ok 2 - t/upstream.t TEST 1: proxied request produces an upstream section with one try - response_body_like - response is expected (u1)
+ok 3 - t/upstream.t TEST 1: proxied request produces an upstream section with one try - status code ok
+ok 4 - t/upstream.t TEST 1: proxied request produces an upstream section with one try - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/u1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /u1back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:27:15 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nu1","response_truncated":false}]}})
+ok 5 - t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - status code ok
+ok 6 - t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - response_body_like - response is expected (u2)
+ok 7 - t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - status code ok
+ok 8 - t/upstream.t TEST 2: the captured try holds the byte-exact sent request line - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/u2","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":200,"bytes":144,"connect_ms":0,"response_ms":0,"request":"GET /u2back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 200 OK\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:27:21 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nu2","response_truncated":false}]}})
+ok 9 - t/upstream.t TEST 3: the try records the received response header block and status - status code ok
+ok 10 - t/upstream.t TEST 3: the try records the received response header block and status - response_body_like - response is expected (u3)
+ok 11 - t/upstream.t TEST 3: the try records the received response header block and status - status code ok
+ok 12 - t/upstream.t TEST 3: the try records the received response header block and status - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/u3","status":201,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":1000,"status":"success","type":"phase","vars":{}}],"upstream":{"protocol":"http","tries":[{"seq":0,"peer":"127.0.0.1:1984","status":201,"bytes":149,"connect_ms":1,"response_ms":1,"request":"GET /u3back HTTP/1.0\r\nHost: 127.0.0.1:1984\r\nConnection: close\r\n\r\n","request_truncated":false,"response_headers":"HTTP/1.1 201 Created\r\nServer: nginx/1.27.0\r\nDate: Sat, 25 Jul 2026 22:27:28 GMT\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nu3","response_truncated":false}]}})
+ok 13 - t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - status code ok
+ok 14 - t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - response_body_like - response is expected (u4)
+ok 15 - t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - status code ok
+ok 16 - t/upstream.t TEST 4: trace_upstream_capture off degrades the section away (FR-UP-7) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/u4","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"PREACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":2,"phase":"ACCESS","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":3,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+ok 17 - t/upstream.t TEST 5: a non-proxied traced request has no upstream section - status code ok
+ok 18 - t/upstream.t TEST 5: a non-proxied traced request has no upstream section - response_body_like - response is expected (u5)
+ok 19 - t/upstream.t TEST 5: a non-proxied traced request has no upstream section - status code ok
+ok 20 - t/upstream.t TEST 5: a non-proxied traced request has no upstream section - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/u5","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{}}]})
+1..20
+ok
+t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - timeout when waiting for the process 287 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - WARNING: killing the child process 287 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - timeout when waiting for the process 291 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - WARNING: killing the child process 291 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - timeout when waiting for the process 295 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - WARNING: killing the child process 295 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 299 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 299 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/upstream_capture.t .. 
+ok 1 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - status code ok
+ok 2 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - response_body - response is expected (repeated req 0, req 0)
+ok 3 - t/upstream_capture.t TEST 1: capture markers appear for a proxied request - grep_error_log_out (req 0)
+ok 4 - t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - status code ok
+ok 5 - t/upstream_capture.t TEST 2: captured request bytes contain the exact request line sent upstream - pattern "GET /back2 HTTP/1.0" matches a line in error.log (req 0)
+ok 6 - t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - status code ok
+ok 7 - t/upstream_capture.t TEST 3: captured response bytes contain the exact status line received - pattern "HTTP/1.1 201" matches a line in error.log (req 0)
+ok 8 - t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - status code ok
+ok 9 - t/upstream_capture.t TEST 4: captured request bytes contain the exact Host header sent upstream - pattern "(?^:Host: 127\.0\.0\.1:\d+)" matches a line in error.log (req 0)
+1..9
+ok
+t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - timeout when waiting for the process 306 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - WARNING: killing the child process 306 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/vars.t TEST 3: a watched variable carries an op classification - timeout when waiting for the process 310 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/vars.t TEST 3: a watched variable carries an op classification - WARNING: killing the child process 310 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - timeout when waiting for the process 314 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - WARNING: killing the child process 314 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/vars.t TEST 5: multiple watched variables are all snapshotted - timeout when waiting for the process 318 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+t/vars.t TEST 5: multiple watched variables are all snapshotted - WARNING: killing the child process 318 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+END - timeout when waiting for the process 322 to exit at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 687.
+END - WARNING: killing the child process 322 with force... at /usr/local/share/perl/5.36.0/Test/Nginx/Util.pm line 726.
+t/vars.t .............. 
+ok 1 - t/vars.t TEST 1: watched variable value is captured in the snapshot - status code ok
+ok 2 - t/vars.t TEST 1: watched variable value is captured in the snapshot - response_body_like - response is expected (v1)
+ok 3 - t/vars.t TEST 1: watched variable value is captured in the snapshot - status code ok
+ok 4 - t/vars.t TEST 1: watched variable value is captured in the snapshot - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/v1","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}}]})
+ok 5 - t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - status code ok
+ok 6 - t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - response_body_like - response is expected (v2)
+ok 7 - t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - status code ok
+ok 8 - t/vars.t TEST 2: only watched variables appear (uri is NOT watched here) - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/v2","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}}]})
+ok 9 - t/vars.t TEST 3: a watched variable carries an op classification - status code ok
+ok 10 - t/vars.t TEST 3: a watched variable carries an op classification - response_body_like - response is expected (v3)
+ok 11 - t/vars.t TEST 3: a watched variable carries an op classification - status code ok
+ok 12 - t/vars.t TEST 3: a watched variable carries an op classification - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/v3","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}}]})
+ok 13 - t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - status code ok
+ok 14 - t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - response_body_like - response is expected (v4)
+ok 15 - t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - status code ok
+ok 16 - t/vars.t TEST 4: bare (no leading $) watch name is accepted and snapshotted - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/v4","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"}}}]})
+ok 17 - t/vars.t TEST 5: multiple watched variables are all snapshotted - status code ok
+ok 18 - t/vars.t TEST 5: multiple watched variables are all snapshotted - response_body_like - response is expected (v5)
+ok 19 - t/vars.t TEST 5: multiple watched variables are all snapshotted - status code ok
+ok 20 - t/vars.t TEST 5: multiple watched variables are all snapshotted - response_body_like - response is expected ({"txn":"trace","method":"GET","uri":"/v5","status":200,"steps":[{"seq":0,"phase":"REWRITE","handler":"","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"},"request_uri":{"value":"/v5?q=1","op":"set_failed"}}},{"seq":1,"phase":"LOG","handler":"log","t_offset_us":0,"status":"success","type":"phase","vars":{"request_method":{"value":"GET","op":"set_failed"},"request_uri":{"value":"/v5?q=1","op":"set_failed"}}}]})
+1..20
+ok
+All tests successful.
+Files=15, Tests=224, 441 wallclock secs ( 0.10 usr  0.04 sys +  1.74 cusr  1.15 csys =  3.03 CPU)
+Result: PASS

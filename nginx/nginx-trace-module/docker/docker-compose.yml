@@ -1,0 +1,22 @@
+# docker/docker-compose.yml — nginx + httpbin for manual smoke testing.
+#   make up    → start both services
+#   make down  → stop and remove
+
+services:
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    volumes:
+      - ./smoke-httpbin.conf:/usr/local/nginx/conf/nginx.conf:ro
+    depends_on:
+      - httpbin
+    command: ["nginx", "-g", "daemon off;"]
+
+  httpbin:
+    image: mccutchen/go-httpbin
+    ports:
+      - "9001:8080"          # host 9001 → httpbin container 8080
