@@ -1,4 +1,4 @@
-FROM nginx:stable-bookworm-perl@sha256:eebce3ed08062b82b5b643b3255d3e4046285d3b019ceed8b1fa5c3cc72a82c2
+FROM nginx:stable-bookworm-perl#sha256:eebce3ed08062b82b5b643b3255d3e4046285d3b019ceed8b1fa5c3cc72a82c2
 
 ARG NMS_URL
 ARG NGINX_AGENT=false

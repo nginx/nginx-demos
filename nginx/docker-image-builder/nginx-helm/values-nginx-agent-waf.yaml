@@ -1,5 +1,5 @@
 # ============================================================
-# Example: NGINX Plus + NGINX Agent + NGINX App Protect WAF
+# Example: NGINX Plus + NGINX Agent + F5 WAF for NGINX
 # ============================================================
 # Usage:
 #   helm install nginx-plus ./nginx-plus \

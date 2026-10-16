@@ -80,6 +80,10 @@ NGINX Docker Image builder
 When using NGINX Agent, you need to be mindful of compatibility with other NGINX Products. Review the [Agent compatibility list](https://docs.nginx.com/nginx-agent/technical-specifications/#nginx-agent-30-compatibility) for details.
 Based on the information in the compatibility matrix, set the `-a` option accordingly.
 
+### Agent WAF syslog listener
+
+For unprivileged images running the F5 WAF for NGINX and NGINX Agent version 2, the WAF syslog listener IP and port are `127.0.0.1:10514`. They are `127.0.0.1:514` for non-unprivileged images.
+
 ## Steps
 
 1. Clone this repository
