@@ -49,6 +49,7 @@ NGINX Docker Image builder
  -C [file.crt]          - Certificate to pull packages from the official NGINX repository
  -K [file.key]          - Key to pull packages from the official NGINX repository
  -w                     - Add F5 WAF for NGINX (requires NGINX Plus)
+ -I                     - Add F5 WAF for NGINX IP Intelligence (required NGINX Plus and F5 WAF for NGINX)
  -O                     - Use NGINX Open Source instead of NGINX Plus
  -u                     - Build unprivileged image (only for NGINX Plus)
  -i [uid:gid]           - Set NGINX UID and GID (only for unprivileged images)
@@ -65,8 +66,8 @@ NGINX Docker Image builder
  NGINX Opensource and NGINX Agent v2 image:
  ./scripts/build.sh -O -t nginx-docker:oss-root -a 2
 
- NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -a 2
+ NGINX Plus, F5 WAF for NGINX, IP Intelligence, and NGINX Agent v2 image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -I -a 2
 
  NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image:
  ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -a 2
