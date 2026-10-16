@@ -49,6 +49,7 @@ NGINX Docker Image builder
  -C [file.crt]          - Certificate to pull packages from the official NGINX repository
  -K [file.key]          - Key to pull packages from the official NGINX repository
  -w                     - Add F5 WAF for NGINX (requires NGINX Plus)
+ -I                     - Add F5 WAF for NGINX IP Intelligence (required NGINX Plus and F5 WAF for NGINX)
  -O                     - Use NGINX Open Source instead of NGINX Plus
  -u                     - Build unprivileged image (only for NGINX Plus)
  -i [uid:gid]           - Set NGINX UID and GID (only for unprivileged images)
@@ -65,8 +66,8 @@ NGINX Docker Image builder
  NGINX Opensource and NGINX Agent v2 image:
  ./scripts/build.sh -O -t nginx-docker:oss-root -a 2
 
- NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 image:
- ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -a 2
+ NGINX Plus, F5 WAF for NGINX, IP Intelligence, and NGINX Agent v2 image:
+ ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -I -a 2
 
  NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image:
  ./scripts/build.sh -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -a 2
@@ -79,6 +80,10 @@ NGINX Docker Image builder
 
 When using NGINX Agent, you need to be mindful of compatibility with other NGINX Products. Review the [Agent compatibility list](https://docs.nginx.com/nginx-agent/technical-specifications/#nginx-agent-30-compatibility) for details.
 Based on the information in the compatibility matrix, set the `-a` option accordingly.
+
+### Agent WAF syslog listener
+
+For unprivileged images running the F5 WAF for NGINX and NGINX Agent version 2, the WAF syslog listener IP and port are `127.0.0.1:10514`. They are `127.0.0.1:514` for non-unprivileged images.
 
 ## Steps
 

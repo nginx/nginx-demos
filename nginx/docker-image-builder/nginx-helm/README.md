@@ -10,7 +10,7 @@ All environment variables are taken directly from the upstream manifest:
 |------|-------------|
 | NGINX Plus only | `values-nginx-only.yaml` |
 | NGINX Plus + NGINX Agent | `values-nginx-agent.yaml` |
-| NGINX Plus + Agent + App Protect WAF | `values-nginx-agent-waf.yaml` |
+| NGINX Plus + Agent + F5 WAF for NGINX | `values-nginx-agent-waf.yaml` |
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ helm install nginx-plus . \
   --set agent.serverToken=YOUR_TOKEN \
   --set agent.tlsSkipVerify=true
 
-# With Agent + App Protect WAF
+# With Agent + F5 WAF for NGINX
 helm install nginx-plus . \
   -f values-nginx-agent-waf.yaml \
   --set image.repository=registry.example.com/nginx-plus \
@@ -79,11 +79,11 @@ helm install nginx-plus . \
 | `agent.allowedDirectories` | `NGINX_AGENT_ALLOWED_DIRECTORIES` | `"/etc/nginx:..."` | Directories the agent may manage |
 | `agent.features` | `NGINX_AGENT_FEATURES` | `""` | Comma-separated feature list |
 
-### NGINX App Protect WAF
+### F5 WAF for NGINX
 
 | Helm value | Env var | Default | Description |
 |---|---|---|---|
-| `waf.enabled` | `NAP_WAF` | `false` | Enable App Protect WAF |
+| `waf.enabled` | `NAP_WAF` | `false` | Enable F5 WAF for NGINX |
 | `waf.precompiledPolicies` | `NAP_WAF_PRECOMPILED_POLICIES` | `false` | Use precompiled WAF policies |
 
 ## Upgrade
