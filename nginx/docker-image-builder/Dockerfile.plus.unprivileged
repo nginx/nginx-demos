@@ -1,6 +1,7 @@
-FROM debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 
 ARG NAP_WAF=false
+ARG WAF_IP_INTELLIGENCE=false
 ARG NGINX_AGENT=false
 ARG NGINX_AGENT_VERSION=2
 
@@ -30,33 +31,38 @@ RUN --mount=type=secret,id=nginx-crt,dst=/etc/ssl/nginx/nginx-repo.crt,mode=0644
   && apt-get -y install nginx-plus nginx-plus-module-njs nginx-plus-module-prometheus \
 # Optional F5 WAF for NGINX
   && if [ "$NAP_WAF" = "true" ] ; then \
-  wget -qO - https://cs.nginx.com/static/keys/app-protect-security-updates.key | gpg --dearmor > /usr/share/keyrings/app-protect-security-updates.gpg \
-  && printf "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://pkgs.nginx.com/app-protect/debian `lsb_release -cs` nginx-plus\n" > /etc/apt/sources.list.d/nginx-app-protect.list \
-  && printf "deb [signed-by=/usr/share/keyrings/app-protect-security-updates.gpg] https://pkgs.nginx.com/app-protect-security-updates/debian `lsb_release -cs` nginx-plus\n" >> /etc/apt/sources.list.d/nginx-app-protect.list \
-  && apt-get -y update \
-  && apt-get -y install app-protect app-protect-attack-signatures \
-  && chown $UID:0 /opt \
-  && chmod g+w /opt \
-  && chown -R $UID:0 /opt/app_protect \
-  && chmod -R g+w /opt/app_protect; fi \
+       wget -qO - https://cs.nginx.com/static/keys/app-protect-security-updates.key | gpg --dearmor > /usr/share/keyrings/app-protect-security-updates.gpg \
+       && printf "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://pkgs.nginx.com/app-protect/debian `lsb_release -cs` nginx-plus\n" > /etc/apt/sources.list.d/nginx-app-protect.list \
+       && printf "deb [signed-by=/usr/share/keyrings/app-protect-security-updates.gpg] https://pkgs.nginx.com/app-protect-security-updates/debian `lsb_release -cs` nginx-plus\n" >> /etc/apt/sources.list.d/nginx-app-protect.list \
+       && apt-get -y update \
+       && apt-get -y install app-protect app-protect-attack-signatures \
+       && if [ "$WAF_IP_INTELLIGENCE" = "true" ] ; then \
+            apt-get -y install app-protect-ip-intelligence; \
+          fi \
+       && chown $UID:0 /opt \
+       && chmod g+w /opt \
+       && chown -R $UID:0 /opt/app_protect \
+       && chmod -R g+w /opt/app_protect; \
+     fi \
 # Forward request logs to Docker log collector
   && ln -sf /dev/stdout /var/log/nginx/access.log \
   && ln -sf /dev/stderr /var/log/nginx/error.log \
 # NGINX Agent
   && if [ "$NGINX_AGENT" = "true" ] ; then \
-  curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
-  && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://packages.nginx.org/nginx-agent/debian/ `lsb_release -cs` agent" > /etc/apt/sources.list.d/nginx-agent.list \
-  && apt-get -y update \
-  && apt-get -y install nginx-agent=`apt-cache madison nginx-agent | grep "| $NGINX_AGENT_VERSION\." | awk '{print $3}' | head -n1` \
+       curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg \
+       && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://packages.nginx.org/nginx-agent/debian/ `lsb_release -cs` agent" > /etc/apt/sources.list.d/nginx-agent.list \
+       && apt-get -y update \
+       && apt-get -y install nginx-agent=`apt-cache madison nginx-agent | grep "| $NGINX_AGENT_VERSION\." | awk '{print $3}' | head -n1` \
 # implement changes required to run NGINX Agent as an unprivileged user
-  && chown -R $UID:0 /etc/nginx-agent \
-  && chmod -R g+w /etc/nginx-agent \
-  && chown -R $UID:0 /var/lib/nginx-agent \
-  && chmod -R g+w /var/lib/nginx-agent \
-  && chown -R $UID:0 /var/log/nginx-agent \
-  && chmod -R g+w /var/log/nginx-agent \
-  && chown -R $UID:0 /var/run/nginx-agent \
-  && chmod -R g+w /var/run/nginx-agent; fi
+       && chown -R $UID:0 /etc/nginx-agent \
+       && chmod -R g+w /etc/nginx-agent \
+       && chown -R $UID:0 /var/lib/nginx-agent \
+       && chmod -R g+w /var/lib/nginx-agent \
+       && chown -R $UID:0 /var/log/nginx-agent \
+       && chmod -R g+w /var/log/nginx-agent \
+       && chown -R $UID:0 /var/run/nginx-agent \
+       && chmod -R g+w /var/run/nginx-agent; \
+     fi
 
 # implement changes required to run NGINX as an unprivileged user
 RUN rm /etc/nginx/conf.d/default.conf \

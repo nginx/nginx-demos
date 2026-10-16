@@ -43,7 +43,7 @@
 
 {{- if .Values.waf.enabled }}
 
-🛡️  NGINX App Protect WAF : ENABLED
+🛡️ F5 WAF for NGINX : ENABLED
   Precompiled Policies   : {{ .Values.waf.precompiledPolicies }}
 {{- end }}
 

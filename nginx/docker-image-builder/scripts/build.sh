@@ -12,6 +12,7 @@ $0 [options]\n\n
 -C [file.crt]\t\t- Certificate to pull packages from the official NGINX repository\n
 -K [file.key]\t\t- Key to pull packages from the official NGINX repository\n
 -w\t\t\t- Add F5 WAF for NGINX (requires NGINX Plus)\n
+-I\t\t\t- Add F5 WAF for NGINX IP Intelligence (required NGINX Plus and F5 WAF for NGINX)\n
 -O\t\t\t- Use NGINX Open Source instead of NGINX Plus\n
 -u\t\t\t- Build unprivileged image (only for NGINX Plus)\n
 -i [uid:gid]\t\t- Set NGINX UID and GID (only for unprivileged images)\n
@@ -26,8 +27,8 @@ NGINX Plus and NGINX Agent v3 image:\n
 NGINX Opensource and NGINX Agent v2 image:\n
   $0 -O -t nginx-docker:oss-root -a 2\n\n
 
-NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 image:\n
-  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -a 2\n\n
+NGINX Plus, F5 WAF for NGINX, IP Intelligence, and NGINX Agent v2 image:\n
+  $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-root -w -I -a 2\n\n
 
 NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image:\n
   $0 -C nginx-repo.crt -K nginx-repo.key -t nginx-docker:plus-nap-agent-nonroot -w -u -a 2\n\n
@@ -38,7 +39,7 @@ NGINX Plus, F5 WAF for NGINX and NGINX Agent v2 unprivileged image, custom UID a
 NGINX_UID=101
 NGINX_GID=101
 
-while getopts 'ht:C:K:a:wOui:' OPTION
+while getopts 'ht:C:K:a:wIOui:' OPTION
 do
   case "$OPTION" in
     h)
@@ -60,6 +61,9 @@ do
     ;;
     w)
       NAP_WAF=true
+    ;;
+    I)
+      WAF_IP_INTELLIGENCE=true
     ;;
     O)
       NGINX_OSS=true
@@ -121,6 +125,11 @@ if ([ ! -z "${NAP_WAF}" ] && [ -z "${NGINX_OSS}" ])
 then
   echo "=> Building with F5 WAF for NGINX"
   OPT_PLATFORM="--platform linux/amd64" # for F5 WAF for NGINX, which is only available for x86_64
+
+  if [ ! -z "${WAF_IP_INTELLIGENCE}" ]
+  then
+    echo "=> Building with F5 WAF for NGINX IP Intelligence"
+  fi
 fi
 
 if [ -z "${NGINX_OSS}" ]
@@ -138,7 +147,9 @@ then
 
   DOCKER_BUILDKIT=1 docker build --no-cache -f $DOCKERFILE_NAME \
     --secret id=nginx-key,src=$NGINX_KEY --secret id=nginx-crt,src=$NGINX_CERT \
-    --build-arg NAP_WAF=$NAP_WAF --build-arg NGINX_AGENT=$NGINX_AGENT \
+    --build-arg NAP_WAF=$NAP_WAF \
+    --build-arg WAF_IP_INTELLIGENCE=$WAF_IP_INTELLIGENCE \
+    --build-arg NGINX_AGENT=$NGINX_AGENT \
     --build-arg NGINX_AGENT_VERSION=$NGINX_AGENT_VERSION \
     --build-arg UID=$NGINX_UID \
     --build-arg GID=$NGINX_GID \

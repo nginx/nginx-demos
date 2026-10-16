@@ -2,7 +2,7 @@ apiVersion: v2
 name: nginx-plus
 description: >
   A production-grade Helm chart for NGINX Plus with optional NGINX Agent
-  (NIM / NGINX One Console) and NGINX App Protect WAF support.
+  (NGINX Instance Manager / NGINX One Console) and F5 WAF for NGINX support.
   Based on the nginx/nginx-demos docker-image-builder manifest.
 type: application
 version: 1.0.0

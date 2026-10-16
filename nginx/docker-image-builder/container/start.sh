@@ -91,6 +91,10 @@ if [[ "$NGINX_AGENT_ENABLED" == "true" ]]; then
 fi
 
 if [[ "$NAP_WAF" == "true" ]]; then
+  if [ -f /opt/app_protect/bin/iprepd ]; then
+    /opt/app_protect/bin/iprepd /etc/app_protect/tools/iprepd.cfg >/dev/null 2>&1 &
+  fi
+
   export FQDN=127.0.0.1
 
   if [[ "$IS_UNPRIVILEGED" ]]; then

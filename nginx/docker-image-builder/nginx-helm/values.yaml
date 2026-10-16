@@ -87,12 +87,12 @@ agent:
   features: ""
 
 # -----------------------------------------------------------------------------
-# NGINX App Protect WAF
+# F5 WAF for NGINX
 # NAP_WAF and NAP_WAF_PRECOMPILED_POLICIES
 # Only relevant when your image was built with WAF support.
 # -----------------------------------------------------------------------------
 waf:
-  # NAP_WAF — set to true to enable NGINX App Protect WAF
+  # NAP_WAF — set to true to enable F5 WAF for NGINX
   enabled: false
 
   # NAP_WAF_PRECOMPILED_POLICIES — use precompiled WAF policies
