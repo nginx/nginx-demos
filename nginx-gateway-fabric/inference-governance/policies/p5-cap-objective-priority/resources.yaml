@@ -1,0 +1,24 @@
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata: {name: jump-queue, namespace: team-assistant}
+spec: {priority: 100, poolRef: {name: llama-8b}}
+---
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata: {name: default-priority, namespace: team-assistant}
+spec: {poolRef: {name: llama-8b}}
+---
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata: {name: research-high, namespace: team-research}
+spec: {priority: 10, poolRef: {name: research-ft}}
+---
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata: {name: research-too-high, namespace: team-research}
+spec: {priority: 11, poolRef: {name: research-ft}}
+---
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata: {name: no-tier, namespace: team-unlabelled}
+spec: {priority: 1, poolRef: {name: x}}

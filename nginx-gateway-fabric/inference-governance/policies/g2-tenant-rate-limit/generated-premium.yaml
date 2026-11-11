@@ -1,0 +1,20 @@
+apiVersion: gateway.nginx.org/v1alpha1
+kind: RateLimitPolicy
+metadata:
+  name: research-tenant-rate-limit
+  namespace: team-research
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: research
+  rateLimit:
+    rejectCode: 429
+    local:
+      rules:
+      - key: team-research
+        rate: 20r/s
+        burst: 20
+        noDelay: true

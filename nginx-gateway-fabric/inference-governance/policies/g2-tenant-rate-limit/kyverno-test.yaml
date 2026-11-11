@@ -1,0 +1,10 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: tenant-rate-limit
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: tenant-rate-limit, isGeneratingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant], generatedResource: generated-standard.yaml, result: pass}
+- {policy: tenant-rate-limit, isGeneratingPolicy: true, kind: HTTPRoute, resources: [team-research/research], generatedResource: generated-premium.yaml, result: pass}

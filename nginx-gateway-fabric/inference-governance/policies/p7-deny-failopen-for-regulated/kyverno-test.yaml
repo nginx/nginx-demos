@@ -1,0 +1,11 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: deny-failopen-for-regulated
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: deny-failopen-for-regulated, isValidatingPolicy: true, kind: InferencePool, resources: [open-regulated], result: fail}
+- {policy: deny-failopen-for-regulated, isValidatingPolicy: true, kind: InferencePool, resources: [open-unregulated], result: pass}
+- {policy: deny-failopen-for-regulated, isValidatingPolicy: true, kind: InferencePool, resources: [closed-regulated, default-regulated], result: skip}

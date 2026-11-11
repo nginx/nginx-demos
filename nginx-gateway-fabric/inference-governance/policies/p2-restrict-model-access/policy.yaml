@@ -1,0 +1,62 @@
+# P2 ("Just point at the big one"): tenants may only route to InferencePools on their allowlist.
+# The allowlist is a platform-owned ConfigMap (kyverno/model-allowlist) keyed by tenant namespace,
+# listing <namespace>/<pool> references. Pools are matched by reference, not by a `model` label,
+# because a tenant could label their own pool anything.
+# Mirrored traffic counts too: a RequestMirror filter's backendRef sends every request to a
+# second backend, so it's checked like any other backendRef.
+# Only namespaces labeled tenant=platform are exempt; an unlabeled namespace is a tenant.
+# Cluster-scoped: it reads a ConfigMap in another namespace.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: restrict-model-access
+  annotations:
+    policies.kyverno.io/title: Restrict model access
+    policies.kyverno.io/description: Tenant HTTPRoutes may only reference InferencePools on the tenant's allowlist.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [gateway.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [httproutes]
+  variables:
+  - name: tenant
+    expression: object.metadata.namespace
+  - name: isPlatform
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'tenant']
+      .orValue('') == 'platform'
+  # Every backendRef the route sends traffic to: rule backends, plus RequestMirror targets on a
+  # rule or on one of its backends.
+  - name: refs
+    expression: >-
+      object.spec.?rules.orValue([]).map(r,
+        r.?backendRefs.orValue([])
+        + r.?filters.orValue([]).filter(f, f.?requestMirror.hasValue()).map(f, f.requestMirror.backendRef)
+        + r.?backendRefs.orValue([]).map(b, b.?filters.orValue([])
+            .filter(f, f.?requestMirror.hasValue()).map(f, f.requestMirror.backendRef)).flatten()
+      ).flatten()
+  - name: pools
+    expression: >-
+      variables.refs
+      .filter(b, b.?group.orValue('') == 'inference.networking.k8s.io' && b.?kind.orValue('') == 'InferencePool')
+      .map(b, b.?namespace.orValue(variables.tenant) + '/' + b.name)
+  - name: allowed
+    expression: >-
+      resource.Get('v1', 'configmaps', 'kyverno', 'model-allowlist').?data[?variables.tenant]
+      .orValue('').split(',').map(s, s.trim()).filter(s, s != '')
+  - name: denied
+    expression: variables.pools.filter(p, !(p in variables.allowed))
+  validations:
+  - expression: variables.isPlatform || variables.denied.size() == 0
+    messageExpression: >-
+      (variables.allowed.size() == 0
+      ? 'no model allowlist entry for ' + variables.tenant
+      : variables.tenant + ' is not approved for ' + variables.denied.join(', '))
+      + ': ask the platform team to add it to your list'
+    message: this route uses a model the tenant isn't approved for; ask the platform team

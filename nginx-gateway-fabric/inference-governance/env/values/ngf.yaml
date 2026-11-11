@@ -1,0 +1,20 @@
+nginxGateway:
+  image:
+    pullPolicy: Never        # images are preloaded with `make images` (see env/images.sh)
+  gwAPIInferenceExtension:
+    enable: true
+    endpointPicker:
+      # The llm-d EPP serves a self-signed cert; NGF skips verification when no BackendTLSPolicy
+      # is set. Keeping TLS on avoids an extra flag on the EPP.
+      disableTLS: false
+  productTelemetry:
+    enable: false
+nginx:
+  image:
+    pullPolicy: Never        # the data plane Deployment NGF provisions per Gateway
+  service:
+    type: NodePort
+    externalTrafficPolicy: Cluster
+    nodePorts:
+    - port: 30080
+      listenerPort: 80

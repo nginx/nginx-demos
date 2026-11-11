@@ -1,0 +1,12 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: inference-backends-only
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [with-fallback, implicit-service, mirror-to-vendor], result: fail}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [pools-only, platform-service], result: pass}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: Service, resources: [vendor-fallback, vendor-unlabelled], result: fail}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: Service, resources: [internal-svc, vendor-alias], result: pass}

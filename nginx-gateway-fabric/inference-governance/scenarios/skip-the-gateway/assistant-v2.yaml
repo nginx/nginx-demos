@@ -1,0 +1,13 @@
+# After the earlier scenarios, team-assistant's original `assistant` route still points at llama-70b (the
+# Finale finds it). Skip the gateway and Valid config use a fresh, fully compliant route for the customer assistant.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: assistant-v2
+  namespace: team-assistant
+spec:
+  parentRefs: [{name: inference-gateway, namespace: gateway}]
+  hostnames: [assistant-v2.example]
+  rules:
+  - backendRefs:
+    - {group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}

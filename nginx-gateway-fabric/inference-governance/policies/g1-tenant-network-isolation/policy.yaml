@@ -1,0 +1,56 @@
+# G1 ("Skip the gateway"): every tenant namespace gets a NetworkPolicy so model servers only
+# accept traffic from the inference gateway's NGINX pods and from the endpoint pickers in their own
+# namespace (metrics scrape).
+# Admission control never sees a call to a pod IP, so this NetworkPolicy is the default that stops it.
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: tenant-network-isolation
+  annotations:
+    policies.kyverno.io/title: Tenant model-server isolation
+    policies.kyverno.io/description: Model servers only accept traffic from the inference gateway and endpoint pickers.
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [namespaces]
+  matchConditions:
+  - name: has-tenant-label
+    expression: object.metadata.?labels[?'tenant'].orValue('') != ''
+  generate:
+  - template:
+      interpolate: cel
+      value: |
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: model-server-ingress
+          namespace: (( object.metadata.name ))
+          labels:
+            app.kubernetes.io/managed-by: kyverno
+        spec:
+          podSelector:
+            matchLabels:
+              inference.example.com/role: model-server
+          policyTypes: [Ingress]
+          ingress:
+          - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: gateway
+              podSelector:
+                matchLabels:
+                  gateway.networking.k8s.io/gateway-name: inference-gateway
+            # The endpoint picker scrapes its own pool's model servers, so it's always in the same
+            # namespace. No namespaceSelector: with one, any tenant could label a pod as a picker
+            # and reach every model server in the cluster.
+            - podSelector:
+                matchLabels:
+                  llm-d.ai/igw-mode: llm-d-router-gateway

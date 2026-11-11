@@ -1,0 +1,12 @@
+# For a DeletingPolicy, "pass" means the object matches and would be deleted; "fail" means kept.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: cleanup-unowned-gpu-workloads
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: cleanup-unowned-gpu-workloads, isDeletingPolicy: true, kind: Deployment, resources: [team-assistant/unowned-model, team-assistant/owner-not-on-pods, no-labels/unlabelled-ns-model], result: pass}
+- {policy: cleanup-unowned-gpu-workloads, isDeletingPolicy: true, kind: StatefulSet, resources: [team-assistant/unowned-sts], result: pass}
+- {policy: cleanup-unowned-gpu-workloads, isDeletingPolicy: true, kind: Deployment, resources: [team-assistant/owned-model, team-assistant/web-frontend, models/platform-model], result: fail}

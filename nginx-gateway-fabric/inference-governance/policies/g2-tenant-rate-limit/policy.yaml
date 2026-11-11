@@ -1,0 +1,67 @@
+# G2 ("Valid config, bad request"): every tenant route to an InferencePool gets a rate limit,
+# sized by the tenant's tier. Admission can't count requests; this makes sure the gateway does.
+# The generated object is the gateway's own rate-limit API (NGINX Gateway Fabric RateLimitPolicy).
+# For Envoy Gateway generate a BackendTrafficPolicy, for kgateway a TrafficPolicy; the trigger and
+# variables are unchanged.
+# The limit is per route: a tenant with three routes gets three times the rate. A true per-tenant
+# budget needs a limit the gateway shares across routes (or a global rate limit service).
+# Only namespaces labeled tenant=platform are exempt; an unlabeled namespace is a tenant.
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: tenant-rate-limit
+  annotations:
+    policies.kyverno.io/title: Tenant rate limit
+    policies.kyverno.io/description: Generates a per-tenant rate limit for every tenant route to an InferencePool.
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [gateway.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [httproutes]
+  matchConditions:
+  - name: routes-to-inferencepool
+    expression: >-
+      object.spec.?rules.orValue([]).exists(r, r.?backendRefs.orValue([]).exists(b,
+      b.?group.orValue('') == 'inference.networking.k8s.io' && b.?kind.orValue('') == 'InferencePool'))
+  variables:
+  - name: labels
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels.orValue({})
+  - name: isTenant
+    expression: variables.labels[?'tenant'].orValue('') != 'platform'   # unlabeled = tenant
+  - name: premium
+    expression: variables.labels[?'tier'].orValue('standard') == 'premium'
+  - name: rate
+    expression: "variables.premium ? '20r/s' : '2r/s'"
+  - name: burst
+    expression: "variables.premium ? 20 : 2"
+  generate:
+  - expression: >-
+      !variables.isTenant || generator.Apply(object.metadata.namespace, [{
+        "apiVersion": dyn("gateway.nginx.org/v1alpha1"),
+        "kind": dyn("RateLimitPolicy"),
+        "metadata": dyn({
+          "name": object.metadata.name + "-tenant-rate-limit",
+          "namespace": object.metadata.namespace,
+          "labels": {"app.kubernetes.io/managed-by": "kyverno"}
+        }),
+        "spec": dyn({
+          "targetRefs": [dyn({"group": "gateway.networking.k8s.io", "kind": "HTTPRoute", "name": object.metadata.name})],
+          "rateLimit": dyn({
+            "rejectCode": dyn(429),
+            "local": dyn({"rules": [dyn({
+              "key": dyn(object.metadata.namespace),
+              "rate": dyn(variables.rate),
+              "burst": dyn(variables.burst),
+              "noDelay": dyn(true)
+            })]})
+          })
+        })
+      }])

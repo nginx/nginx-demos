@@ -1,0 +1,10 @@
+# Keep serving, second change: the shadow pool after `kubectl patch ... failureMode: FailOpen`.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenarios-check-keep-serving
+policies: [../p7-deny-failopen-for-regulated/policy.yaml]
+resources: [../../scenarios/keep-serving/failopen-pool.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: deny-failopen-for-regulated, isValidatingPolicy: true, kind: InferencePool, resources: [team-assistant/shadow-70b], result: fail}

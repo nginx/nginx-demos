@@ -1,0 +1,71 @@
+# P3 ("Shadow GPU"): every InferencePool and every model server must name who pays.
+# A model server is anything that runs pods labeled inference.example.com/role: model-server: a bare
+# Pod or any workload controller. Workloads need the label on themselves and on their pod template,
+# because the pods are what run on GPUs (and what the cost meter bills).
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-cost-center
+  annotations:
+    policies.kyverno.io/title: Require cost-center
+    policies.kyverno.io/description: InferencePools and model servers (Pods and workload controllers) must carry a cost-center label.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [inference.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [inferencepools]
+    - apiGroups: [""]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [pods]
+    - apiGroups: [apps]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [deployments, statefulsets, daemonsets, replicasets]
+    - apiGroups: [batch]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [jobs, cronjobs]
+  matchConditions:
+  - name: pool-or-model-server
+    expression: >-
+      object.kind == 'InferencePool' ||
+      (object.kind == 'Pod' ? object.metadata.?labels :
+       object.kind == 'CronJob' ? object.spec.?jobTemplate.?spec.?template.?metadata.?labels :
+       object.spec.?template.?metadata.?labels)
+      .orValue({})[?'inference.example.com/role'].orValue('') == 'model-server'
+  variables:
+  - name: owned
+    expression: object.metadata.?labels[?'cost-center'].orValue('') != ''
+  # The pods' labels; for an InferencePool or a Pod, the object's own.
+  - name: podsOwned
+    expression: >-
+      object.kind in ['InferencePool', 'Pod'] ? variables.owned :
+      (object.kind == 'CronJob' ? object.spec.?jobTemplate.?spec.?template.?metadata.?labels :
+       object.spec.?template.?metadata.?labels)
+      .orValue({})[?'cost-center'].orValue('') != ''
+  # Objects made by a controller this policy already checks are reported once, at the controller:
+  # a Deployment's ReplicaSet, and Pods from a StatefulSet, DaemonSet, Job or a Deployment's
+  # ReplicaSet. Kyverno's resourceFilters skip ReplicaSets at admission but not in background scans
+  # of CEL policies, so both kinds need this. A tenant's own ReplicaSet (no Deployment above it)
+  # and its Pods are still checked.
+  - name: checkedAtController
+    expression: >-
+      (object.kind == 'ReplicaSet' && object.metadata.?ownerReferences.orValue([]).exists(o,
+        o.?controller.orValue(false) && o.kind == 'Deployment')) ||
+      (object.kind == 'Pod' && object.metadata.?ownerReferences.orValue([]).exists(o,
+        o.?controller.orValue(false) && (o.kind in ['StatefulSet', 'DaemonSet', 'Job'] ||
+          (o.kind == 'ReplicaSet' &&
+           resource.Get('apps/v1', 'replicasets', object.metadata.namespace, o.name)
+             .metadata.?ownerReferences.orValue([]).exists(p, p.?controller.orValue(false) && p.kind == 'Deployment')))))
+  validations:
+  - expression: variables.checkedAtController || (variables.owned && variables.podsOwned)
+    messageExpression: >-
+      object.kind + ' ' + object.metadata.name + ' needs a cost-center label' +
+      (variables.owned ? ' on its pod template' : '')

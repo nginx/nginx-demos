@@ -1,0 +1,62 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: with-fallback, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+  - matches: [{headers: [{name: x-fallback, value: "1"}]}]
+    backendRefs: [{name: vendor-fallback, port: 80}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: pools-only, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+---
+# kind omitted = Service
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: implicit-service, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: "", name: llama-8b-direct, port: 8000}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: platform-service, namespace: gateway}
+spec:
+  rules:
+  - backendRefs: [{name: status-page, port: 80}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: vendor-fallback, namespace: team-assistant}
+spec: {type: ExternalName, externalName: vendor-api.vendor.svc.cluster.local}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: internal-svc, namespace: team-assistant}
+spec: {selector: {app: x}, ports: [{port: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: vendor-alias, namespace: vendor}
+spec: {type: ExternalName, externalName: api.vendor.example}
+---
+# Pool as the backend, but every request is mirrored to the vendor.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: mirror-to-vendor, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+    filters:
+    - type: RequestMirror
+      requestMirror: {backendRef: {name: vendor-fallback, port: 80}}
+---
+# A namespace with no tenant label is a tenant, not platform.
+apiVersion: v1
+kind: Service
+metadata: {name: vendor-unlabelled, namespace: no-labels}
+spec: {type: ExternalName, externalName: api.vendor.example}
