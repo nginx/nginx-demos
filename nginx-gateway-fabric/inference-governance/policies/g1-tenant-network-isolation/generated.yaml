@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: model-server-ingress
+  namespace: team-x
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+spec:
+  podSelector:
+    matchLabels:
+      inference.example.com/role: model-server
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: gateway
+      podSelector:
+        matchLabels:
+          gateway.networking.k8s.io/gateway-name: inference-gateway
+    - podSelector:
+        matchLabels:
+          llm-d.ai/igw-mode: llm-d-router-gateway

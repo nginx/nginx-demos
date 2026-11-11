@@ -1,0 +1,24 @@
+# Baseline, compliant routes. The demo starts from here.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: assistant
+  namespace: team-assistant
+spec:
+  parentRefs: [{name: inference-gateway, namespace: gateway}]
+  hostnames: [assistant.example]
+  rules:
+  - backendRefs:
+    - {group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: research
+  namespace: team-research
+spec:
+  parentRefs: [{name: inference-gateway, namespace: gateway}]
+  hostnames: [research.example]
+  rules:
+  - backendRefs:
+    - {group: inference.networking.k8s.io, kind: InferencePool, name: research-ft}

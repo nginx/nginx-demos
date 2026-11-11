@@ -1,0 +1,4 @@
+# Answers served by team-research's fine-tuned model. Fictional "internal" content for the "Borrow a
+# model" leak. One line, so the clip always shows what the script narrates (a customer asks about a
+# renewal discount and gets embargoed pricing).
+INTERNAL: Draft pricing for the next tier is attached. Embargoed until the launch review.

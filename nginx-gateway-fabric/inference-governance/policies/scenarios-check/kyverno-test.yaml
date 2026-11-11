@@ -1,0 +1,35 @@
+# Checks that the exact manifests each recorded clip applies are denied by that scenario's policy.
+# If a scenario's YAML drifts, this fails before you discover it on camera.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenarios-check
+policies:
+- ../p2-restrict-model-access/policy.yaml
+- ../p3-require-cost-center/policy.yaml
+- ../p5-cap-objective-priority/policy.yaml
+- ../p6-inference-backends-only/policy.yaml
+resources:
+- ../../scenarios/just-point/assistant-70b.yaml
+- ../../scenarios/borrow-a-model/assistant-research-ft.yaml
+- ../../scenarios/shadow-gpu/shadow-70b.yaml
+- ../../scenarios/cut-the-line/objective.yaml
+- ../../scenarios/keep-serving/fallback.yaml
+- ../../scenarios/skip-the-gateway/assistant-v2.yaml
+clusterResources: [../_shared/cluster.yaml]
+results:
+# Just point at the big one: assistant -> models/llama-70b
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant], result: fail}
+# Borrow a model: assistant-pro -> team-research/research-ft (also outside the allowlist)
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-pro], result: fail}
+# Shadow GPU: shadow model has no cost-center and runs on h100 in a standard namespace
+- {policy: require-cost-center, isValidatingPolicy: true, kind: InferencePool, resources: [team-assistant/shadow-70b], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [team-assistant/shadow-70b], result: fail}
+# Cut the line: priority 100 in a standard namespace
+- {policy: cap-objective-priority, isValidatingPolicy: true, kind: InferenceObjective, resources: [team-assistant/assistant-vip], result: fail}
+# Keep serving and its old fallback: ExternalName fallback, Service backend, FailOpen in a regulated namespace
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: Service, resources: [team-assistant/vendor-fallback], result: fail}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-fallback], result: fail}
+# Skip the gateway's compliant route must pass the admission policies installed by then.
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-v2], result: pass}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-v2], result: pass}

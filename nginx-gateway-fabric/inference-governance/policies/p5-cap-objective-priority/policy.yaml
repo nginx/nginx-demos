@@ -1,0 +1,34 @@
+# P5 ("Cut the line"): InferenceObjective priority is capped by the tenant's tier.
+# Priority decides who gets served first when a pool is saturated, so it's a fairness control.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: cap-objective-priority
+  annotations:
+    policies.kyverno.io/title: Cap InferenceObjective priority by tier
+    policies.kyverno.io/description: Standard tier may use priority up to 0, premium up to 10.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [llm-d.ai]
+      # Not "*": admission accepts a wildcard, but Kyverno's background scan can't resolve one
+      # ("no matches for llm-d.ai/*"), so the Finale would never report this policy.
+      apiVersions: [v1alpha2]
+      operations: [CREATE, UPDATE]
+      resources: [inferenceobjectives]
+  variables:
+  - name: tier
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'tier'].orValue('standard')
+  - name: cap
+    expression: "variables.tier == 'premium' ? 10 : 0"
+  - name: priority
+    expression: object.spec.?priority.orValue(0)
+  validations:
+  - expression: variables.priority <= variables.cap
+    messageExpression: >-
+      object.metadata.namespace + ' (' + variables.tier + ' tier) max priority is ' + string(variables.cap)

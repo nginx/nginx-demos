@@ -1,0 +1,97 @@
+# Demo identities, used with `kubectl --as` (scenarios/lib.sh):
+#   team-assistant-dev       tenant-editor in team-assistant only
+#   team-research-dev  tenant-editor in team-research only
+#   platform-admin     cluster-admin via group platform-admins: installs the policies
+#
+# Why the platform writes its own tenant role: Kubernetes' built-in `edit` ClusterRole doesn't cover
+# Gateway API or Inference Extension resources (neither project ships aggregate-to-edit labels), so
+# a platform team has to decide what tenants may create. This one lets tenants run their own models
+# and routes: Deployments, InferencePools, HTTPRoutes, and ReferenceGrants.
+#
+# ReferenceGrants are the hard one. RBAC works on kind and verb: "may create ReferenceGrants in
+# team-research", yes or no. It can't see what a grant points at (spec.to.kind: Service or
+# InferencePool). Removing the verb stops teams sharing their own Services, a normal Gateway API
+# pattern, and turns every grant into a platform ticket; keeping it lets any team share its models.
+# "Borrow a model" keeps it; P1 is the field-level rule RBAC can't express.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-editor
+rules:
+- apiGroups: [""]
+  resources: [pods, pods/exec, pods/attach, pods/log, services, configmaps, serviceaccounts]
+  verbs: ["*"]
+# Tenants deploy their own endpoint pickers (llm-d-router chart), which need namespaced Roles.
+# Escalation is still blocked: Kubernetes only lets them grant permissions they already hold.
+- apiGroups: [rbac.authorization.k8s.io]
+  resources: [roles, rolebindings]
+  verbs: ["*"]
+- apiGroups: [apps]
+  resources: [deployments]
+  verbs: ["*"]
+- apiGroups: [gateway.networking.k8s.io]
+  resources: [httproutes, referencegrants]
+  verbs: ["*"]
+- apiGroups: [inference.networking.k8s.io]
+  resources: [inferencepools]
+  verbs: ["*"]
+- apiGroups: [llm-d.ai]
+  resources: [inferenceobjectives, inferencemodelrewrites]
+  verbs: ["*"]
+- apiGroups: [inference.networking.x-k8s.io]
+  resources: [inferenceobjectives, inferencemodelrewrites]
+  verbs: [get, list, watch]
+- apiGroups: [gateway.nginx.org]
+  resources: [ratelimitpolicies]
+  verbs: ["*"]
+- apiGroups: [wgpolicyk8s.io]
+  resources: [policyreports]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-viewer
+rules:
+- apiGroups: ["", apps, gateway.networking.k8s.io, inference.networking.k8s.io, llm-d.ai]
+  resources: ["*"]
+  verbs: [get, list, watch]
+- apiGroups: [policies.kyverno.io]
+  resources: ["*"]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-assistant-dev
+  namespace: team-assistant
+subjects:
+- {kind: User, name: team-assistant-dev, apiGroup: rbac.authorization.k8s.io}
+roleRef: {kind: ClusterRole, name: tenant-editor, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-research-dev
+  namespace: team-research
+subjects:
+- {kind: User, name: team-research-dev, apiGroup: rbac.authorization.k8s.io}
+roleRef: {kind: ClusterRole, name: tenant-editor, apiGroup: rbac.authorization.k8s.io}
+---
+# Everyone can look around (shared pools, policies), nobody else can change them.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tenants-view
+subjects:
+- {kind: User, name: team-assistant-dev, apiGroup: rbac.authorization.k8s.io}
+- {kind: User, name: team-research-dev, apiGroup: rbac.authorization.k8s.io}
+roleRef: {kind: ClusterRole, name: tenant-viewer, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-admins
+subjects:
+- {kind: Group, name: platform-admins, apiGroup: rbac.authorization.k8s.io}
+roleRef: {kind: ClusterRole, name: cluster-admin, apiGroup: rbac.authorization.k8s.io}

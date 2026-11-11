@@ -1,0 +1,10 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: cap-objective-priority
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: cap-objective-priority, isValidatingPolicy: true, kind: InferenceObjective, resources: [jump-queue, research-too-high, no-tier], result: fail}
+- {policy: cap-objective-priority, isValidatingPolicy: true, kind: InferenceObjective, resources: [default-priority, research-high], result: pass}

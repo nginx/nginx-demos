@@ -1,0 +1,11 @@
+# Shadow GPU: the shadow model's Deployment (extracted from scenarios/shadow-gpu/shadow-70b.yaml by
+# `make test`; the CLI matches results by name across kinds, so this keeps the check exact).
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenarios-check-shadow-gpu
+policies: [../p4-restrict-gpu-class-by-tier/policy.yaml]
+resources: [shadow-70b-deployment.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [team-assistant/shadow-70b], result: fail}

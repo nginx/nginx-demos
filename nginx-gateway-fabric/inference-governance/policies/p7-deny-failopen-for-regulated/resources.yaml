@@ -1,0 +1,19 @@
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: open-regulated, namespace: team-assistant}
+spec: {selector: {matchLabels: {a: b}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: e, port: {number: 9002}, failureMode: FailOpen}}
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: closed-regulated, namespace: team-assistant}
+spec: {selector: {matchLabels: {a: b}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: e, port: {number: 9002}, failureMode: FailClose}}
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: default-regulated, namespace: team-assistant}
+spec: {selector: {matchLabels: {a: b}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: e, port: {number: 9002}}}
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: open-unregulated, namespace: team-research}
+spec: {selector: {matchLabels: {a: b}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: e, port: {number: 9002}, failureMode: FailOpen}}

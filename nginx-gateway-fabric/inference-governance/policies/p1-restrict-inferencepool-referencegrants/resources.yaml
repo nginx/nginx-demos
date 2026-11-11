@@ -1,0 +1,13 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata: {name: share-research-ft, namespace: team-research}
+spec:
+  from: [{group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: team-assistant}]
+  to: [{group: inference.networking.k8s.io, kind: InferencePool}]
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata: {name: share-services-only, namespace: team-research}
+spec:
+  from: [{group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: team-assistant}]
+  to: [{group: "", kind: Service}]

@@ -1,0 +1,416 @@
+# Rendered by env/models.sh, the same way install-workloads.sh does. InferencePools are dropped
+# because the shared fake cluster already has pools with these names.
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-8b-epp
+  namespace: models
+  labels:
+    app.kubernetes.io/name: llama-8b-epp
+    app.kubernetes.io/version: "0.0.0"
+    llm-d.ai/igw-mode: llm-d-router-gateway
+spec:
+  replicas: 1
+  strategy:
+    # The current recommended EPP deployment pattern is to have a single active replica. This ensures
+    # optimal performance of the stateful operations such prefix cache aware scorer.
+    # The Recreate strategy the old replica is killed immediately, and allow the new replica(s) to
+    # quickly take over. This is particularly important in the high availability set up with leader
+    # election, as the rolling update strategy would prevent the old leader being killed because
+    # otherwise the maxUnavailable would be 100%.
+    #
+    # With replicas > 1 this also means the Deployment never reports Available=True,
+    # because standby replicas stay NotReady by design. Set router.epp.deploymentStrategy
+    # if that blocks your tooling; see "Multi-replica EPP and Helm --wait" in the chart README.
+    type: Recreate
+  selector:
+    matchLabels:
+      llm-d-router-gateway: llama-8b-epp
+  template:
+    metadata:
+      labels:
+        llm-d-router-gateway: llama-8b-epp
+        llm-d.ai/igw-mode: llm-d-router-gateway
+      annotations:
+        checksum/config: c2126e16981010ea0b1143fea3885f6573be8ead296f5769f8b3b604b20c30d6
+    spec:
+      serviceAccountName: llama-8b-epp
+      # Conservatively, this timeout should mirror the longest grace period of the pods within the pool
+      terminationGracePeriodSeconds: 130
+      containers:
+        - name: epp
+          image: ghcr.io/llm-d/llm-d-router-endpoint-picker:v0.11.0
+          imagePullPolicy: Never
+          args:
+            - --pool-name
+            - llama-8b
+            # The pool namespace is optional because EPP can default to the NAMESPACE env var.
+            - --pool-namespace
+            - models
+            - --pool-group
+            - "inference.networking.k8s.io"
+            - --zap-encoder
+            - "json"
+            - --config-file
+            - "/config/default-plugins.yaml"
+            - --grpc-health-port
+            - "9003"
+            # Pass additional flags via the router.epp.flags field in values.yaml.
+            # Render them as --flag=value so boolean values are parsed correctly.
+            - --tracing=false
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          ports:
+            - name: grpc
+              containerPort: 9002
+            - name: grpc-health
+              containerPort: 9003
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            periodSeconds: 2
+          # Allow in-flight gRPC streams to drain and give Envoy health checks
+          # time to detect termination and shift traffic to standby endpoints before SIGTERM.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: plugins-config-volume
+              mountPath: "/config"
+      volumes:
+        - name: plugins-config-volume
+          configMap:
+            name: llama-8b-epp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-8b
+  namespace: models
+  labels: {model-pool: llama-8b, cost-center: platform}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {model-pool: llama-8b}
+  template:
+    metadata:
+      labels:
+        model-pool: llama-8b
+        cost-center: platform
+        gpu.example.com/class: l4
+        inference.example.com/role: model-server
+    spec:
+      containers:
+        - name: sim
+          image: ghcr.io/llm-d/llm-d-inference-sim:v1.0.0
+          imagePullPolicy: Never # preloaded by env/images.sh
+          # Served as "<name>" and "auto": clients always ask for "auto", the reply names the real model.
+          args: [--model, llama-8b, --served-model-name, llama-8b, auto, --port, "8000", --dataset-path, /data/dataset.sqlite3, --time-to-first-token, 200ms, --inter-token-latency, 20ms, --max-num-seqs, "8"]
+          ports: [{name: http, containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /health, port: http}}
+          resources: {requests: {cpu: 10m, memory: 64Mi}}
+          volumeMounts: [{name: dataset, mountPath: /data}]
+      volumes:
+        - name: dataset
+          configMap: {name: dataset-general, items: [{key: dataset.sqlite3, path: dataset.sqlite3}]}
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-70b-epp
+  namespace: models
+  labels:
+    app.kubernetes.io/name: llama-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+    llm-d.ai/igw-mode: llm-d-router-gateway
+spec:
+  replicas: 1
+  strategy:
+    # The current recommended EPP deployment pattern is to have a single active replica. This ensures
+    # optimal performance of the stateful operations such prefix cache aware scorer.
+    # The Recreate strategy the old replica is killed immediately, and allow the new replica(s) to
+    # quickly take over. This is particularly important in the high availability set up with leader
+    # election, as the rolling update strategy would prevent the old leader being killed because
+    # otherwise the maxUnavailable would be 100%.
+    #
+    # With replicas > 1 this also means the Deployment never reports Available=True,
+    # because standby replicas stay NotReady by design. Set router.epp.deploymentStrategy
+    # if that blocks your tooling; see "Multi-replica EPP and Helm --wait" in the chart README.
+    type: Recreate
+  selector:
+    matchLabels:
+      llm-d-router-gateway: llama-70b-epp
+  template:
+    metadata:
+      labels:
+        llm-d-router-gateway: llama-70b-epp
+        llm-d.ai/igw-mode: llm-d-router-gateway
+      annotations:
+        checksum/config: 9d3c8d28bc2d027df4710a938239a2f8721bf12182fb7978b024d8193af92fd3
+    spec:
+      serviceAccountName: llama-70b-epp
+      # Conservatively, this timeout should mirror the longest grace period of the pods within the pool
+      terminationGracePeriodSeconds: 130
+      containers:
+        - name: epp
+          image: ghcr.io/llm-d/llm-d-router-endpoint-picker:v0.11.0
+          imagePullPolicy: Never
+          args:
+            - --pool-name
+            - llama-70b
+            # The pool namespace is optional because EPP can default to the NAMESPACE env var.
+            - --pool-namespace
+            - models
+            - --pool-group
+            - "inference.networking.k8s.io"
+            - --zap-encoder
+            - "json"
+            - --config-file
+            - "/config/default-plugins.yaml"
+            - --grpc-health-port
+            - "9003"
+            # Pass additional flags via the router.epp.flags field in values.yaml.
+            # Render them as --flag=value so boolean values are parsed correctly.
+            - --tracing=false
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          ports:
+            - name: grpc
+              containerPort: 9002
+            - name: grpc-health
+              containerPort: 9003
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            periodSeconds: 2
+          # Allow in-flight gRPC streams to drain and give Envoy health checks
+          # time to detect termination and shift traffic to standby endpoints before SIGTERM.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: plugins-config-volume
+              mountPath: "/config"
+      volumes:
+        - name: plugins-config-volume
+          configMap:
+            name: llama-70b-epp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-70b
+  namespace: models
+  labels: {model-pool: llama-70b, cost-center: platform}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {model-pool: llama-70b}
+  template:
+    metadata:
+      labels:
+        model-pool: llama-70b
+        cost-center: platform
+        gpu.example.com/class: h100
+        inference.example.com/role: model-server
+    spec:
+      containers:
+        - name: sim
+          image: ghcr.io/llm-d/llm-d-inference-sim:v1.0.0
+          imagePullPolicy: Never # preloaded by env/images.sh
+          # Served as "<name>" and "auto": clients always ask for "auto", the reply names the real model.
+          args: [--model, llama-70b, --served-model-name, llama-70b, auto, --port, "8000", --dataset-path, /data/dataset.sqlite3, --time-to-first-token, 200ms, --inter-token-latency, 20ms, --max-num-seqs, "8"]
+          ports: [{name: http, containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /health, port: http}}
+          resources: {requests: {cpu: 10m, memory: 64Mi}}
+          volumeMounts: [{name: dataset, mountPath: /data}]
+      volumes:
+        - name: dataset
+          configMap: {name: dataset-general, items: [{key: dataset.sqlite3, path: dataset.sqlite3}]}
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: research-ft-epp
+  namespace: team-research
+  labels:
+    app.kubernetes.io/name: research-ft-epp
+    app.kubernetes.io/version: "0.0.0"
+    llm-d.ai/igw-mode: llm-d-router-gateway
+spec:
+  replicas: 1
+  strategy:
+    # The current recommended EPP deployment pattern is to have a single active replica. This ensures
+    # optimal performance of the stateful operations such prefix cache aware scorer.
+    # The Recreate strategy the old replica is killed immediately, and allow the new replica(s) to
+    # quickly take over. This is particularly important in the high availability set up with leader
+    # election, as the rolling update strategy would prevent the old leader being killed because
+    # otherwise the maxUnavailable would be 100%.
+    #
+    # With replicas > 1 this also means the Deployment never reports Available=True,
+    # because standby replicas stay NotReady by design. Set router.epp.deploymentStrategy
+    # if that blocks your tooling; see "Multi-replica EPP and Helm --wait" in the chart README.
+    type: Recreate
+  selector:
+    matchLabels:
+      llm-d-router-gateway: research-ft-epp
+  template:
+    metadata:
+      labels:
+        llm-d-router-gateway: research-ft-epp
+        llm-d.ai/igw-mode: llm-d-router-gateway
+      annotations:
+        checksum/config: 09a7646b1c8943588f0bdc78e6a49a641aad91f098a7f99e3cb3abac04665dec
+    spec:
+      serviceAccountName: research-ft-epp
+      # Conservatively, this timeout should mirror the longest grace period of the pods within the pool
+      terminationGracePeriodSeconds: 130
+      containers:
+        - name: epp
+          image: ghcr.io/llm-d/llm-d-router-endpoint-picker:v0.11.0
+          imagePullPolicy: Never
+          args:
+            - --pool-name
+            - research-ft
+            # The pool namespace is optional because EPP can default to the NAMESPACE env var.
+            - --pool-namespace
+            - team-research
+            - --pool-group
+            - "inference.networking.k8s.io"
+            - --zap-encoder
+            - "json"
+            - --config-file
+            - "/config/default-plugins.yaml"
+            - --grpc-health-port
+            - "9003"
+            # Pass additional flags via the router.epp.flags field in values.yaml.
+            # Render them as --flag=value so boolean values are parsed correctly.
+            - --tracing=false
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          ports:
+            - name: grpc
+              containerPort: 9002
+            - name: grpc-health
+              containerPort: 9003
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            periodSeconds: 2
+          # Allow in-flight gRPC streams to drain and give Envoy health checks
+          # time to detect termination and shift traffic to standby endpoints before SIGTERM.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: plugins-config-volume
+              mountPath: "/config"
+      volumes:
+        - name: plugins-config-volume
+          configMap:
+            name: research-ft-epp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: research-ft
+  namespace: team-research
+  labels: {model-pool: research-ft, cost-center: team-research}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {model-pool: research-ft}
+  template:
+    metadata:
+      labels:
+        model-pool: research-ft
+        cost-center: team-research
+        gpu.example.com/class: h100
+        inference.example.com/role: model-server
+    spec:
+      containers:
+        - name: sim
+          image: ghcr.io/llm-d/llm-d-inference-sim:v1.0.0
+          imagePullPolicy: Never # preloaded by env/images.sh
+          # Served as "<name>" and "auto": clients always ask for "auto", the reply names the real model.
+          args: [--model, research-ft, --served-model-name, research-ft, auto, --port, "8000", --dataset-path, /data/dataset.sqlite3, --time-to-first-token, 200ms, --inter-token-latency, 20ms, --max-num-seqs, "8"]
+          ports: [{name: http, containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /health, port: http}}
+          resources: {requests: {cpu: 10m, memory: 64Mi}}
+          volumeMounts: [{name: dataset, mountPath: /data}]
+      volumes:
+        - name: dataset
+          configMap: {name: dataset-research-internal, items: [{key: dataset.sqlite3, path: dataset.sqlite3}]}
+---

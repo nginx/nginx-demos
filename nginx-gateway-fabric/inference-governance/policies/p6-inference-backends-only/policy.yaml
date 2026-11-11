@@ -1,0 +1,55 @@
+# P6 (repo only, fallback.yaml in "Keep serving"): tenant routes may only send traffic to InferencePools, and tenants may not
+# create ExternalName Services. Together these stop a fallback to a plain Service or an external
+# vendor, which would bypass the endpoint picker, the allowlist and cost attribution.
+# RequestMirror filters count: mirroring every request to an outside Service leaks the same data.
+# Only namespaces labeled tenant=platform are exempt; an unlabeled namespace is a tenant.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: inference-backends-only
+  annotations:
+    policies.kyverno.io/title: Inference backends only
+    policies.kyverno.io/description: Tenant HTTPRoutes may only use InferencePool backends; no ExternalName Services in tenant namespaces.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [gateway.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [httproutes]
+    - apiGroups: [""]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [services]
+  variables:
+  - name: isPlatform
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'tenant']
+      .orValue('') == 'platform'
+  # Every backendRef the route sends traffic to: rule backends, plus RequestMirror targets on a
+  # rule or on one of its backends.
+  - name: refs
+    expression: >-
+      object.kind != 'HTTPRoute' ? [] :
+      object.spec.?rules.orValue([]).map(r,
+        r.?backendRefs.orValue([])
+        + r.?filters.orValue([]).filter(f, f.?requestMirror.hasValue()).map(f, f.requestMirror.backendRef)
+        + r.?backendRefs.orValue([]).map(b, b.?filters.orValue([])
+            .filter(f, f.?requestMirror.hasValue()).map(f, f.requestMirror.backendRef)).flatten()
+      ).flatten()
+  - name: nonPoolBackends
+    expression: >-
+      variables.refs
+      .filter(b, !(b.?group.orValue('') == 'inference.networking.k8s.io' && b.?kind.orValue('Service') == 'InferencePool'))
+      .map(b, b.name)
+  validations:
+  - expression: variables.isPlatform || variables.nonPoolBackends.size() == 0
+    messageExpression: >-
+      object.metadata.namespace + ' routes may only use InferencePools (found ' + variables.nonPoolBackends.join(', ') + ')'
+  - expression: >-
+      variables.isPlatform || object.kind != 'Service' || object.spec.?type.orValue('ClusterIP') != 'ExternalName'
+    message: ExternalName Services are not allowed in tenant namespaces

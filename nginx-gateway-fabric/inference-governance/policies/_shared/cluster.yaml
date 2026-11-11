@@ -1,0 +1,62 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: ClusterResource
+metadata:
+  name: demo-cluster
+spec:
+  crds:
+  - ../_crds/gateway.networking.k8s.io_httproutes.yaml
+  - ../_crds/gateway.networking.k8s.io_referencegrants.yaml
+  - ../_crds/inference.networking.k8s.io_inferencepools.yaml
+  - ../_crds/llm-d.ai_inferenceobjectives.yaml
+  - ../_crds/gateway.nginx.org_ratelimitpolicies.yaml
+  resources:
+  - {apiVersion: v1, kind: Namespace, metadata: {name: models, labels: {tenant: platform}}}
+  - {apiVersion: v1, kind: Namespace, metadata: {name: gateway, labels: {tenant: platform}}}
+  - {apiVersion: v1, kind: Namespace, metadata: {name: vendor, labels: {tenant: platform}}}
+  - apiVersion: v1
+    kind: Namespace
+    metadata: {name: team-research, labels: {tenant: team-research, tier: premium}}
+  - apiVersion: v1
+    kind: Namespace
+    metadata: {name: team-assistant, labels: {tenant: team-assistant, tier: standard, regulated: "true"}}
+  - apiVersion: v1
+    kind: Namespace
+    metadata: {name: team-unlabelled, labels: {tenant: team-unlabelled}}
+  - {apiVersion: v1, kind: Namespace, metadata: {name: kyverno}}
+  # No labels at all: treated as a tenant, not as platform.
+  - {apiVersion: v1, kind: Namespace, metadata: {name: no-labels}}
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata: {name: model-allowlist, namespace: kyverno}
+    data:
+      team-assistant: models/llama-8b
+      team-research: models/llama-8b, models/llama-70b, team-research/research-ft
+  - apiVersion: inference.networking.k8s.io/v1
+    kind: InferencePool
+    metadata: {name: llama-8b, namespace: models, labels: {model: llama-8b, cost-center: platform}}
+    spec: {selector: {matchLabels: {model-pool: x}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: x-epp, port: {number: 9002}}}
+  - apiVersion: inference.networking.k8s.io/v1
+    kind: InferencePool
+    metadata: {name: llama-70b, namespace: models, labels: {model: llama-70b, cost-center: platform}}
+    spec: {selector: {matchLabels: {model-pool: x}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: x-epp, port: {number: 9002}}}
+  - apiVersion: inference.networking.k8s.io/v1
+    kind: InferencePool
+    metadata: {name: research-ft, namespace: team-research, labels: {model: research-ft, cost-center: team-research}}
+    spec: {selector: {matchLabels: {model-pool: x}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: x-epp, port: {number: 9002}}}
+  - apiVersion: inference.networking.k8s.io/v1
+    kind: InferencePool
+    metadata: {name: own-pool, namespace: team-assistant, labels: {model: own-pool}}
+    spec: {selector: {matchLabels: {model-pool: x}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: x-epp, port: {number: 9002}}}
+  # A Deployment's ReplicaSet, for the Pod-ownership checks in P3/P4.
+  - apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: owned-model-7d9f
+      namespace: team-assistant
+      ownerReferences: [{apiVersion: apps/v1, kind: Deployment, name: owned-model, uid: 00000000-0000-0000-0000-0000000000a1, controller: true}]
+    spec: {selector: {matchLabels: {a: b}}, template: {metadata: {labels: {a: b}}, spec: {containers: [{name: sim, image: sim}]}}}
+  # A ReplicaSet a tenant made by hand, with no Deployment above it.
+  - apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata: {name: handmade-rs, namespace: team-assistant}
+    spec: {selector: {matchLabels: {a: b}}, template: {metadata: {labels: {a: b}}, spec: {containers: [{name: sim, image: sim}]}}}

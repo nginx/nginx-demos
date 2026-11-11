@@ -1,0 +1,56 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: inference-gateway
+  namespace: gateway
+spec:
+  gatewayClassName: nginx
+  infrastructure:
+    parametersRef:
+      group: gateway.nginx.org
+      kind: NginxProxy
+      name: inference-gateway
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+---
+# NGF resolves ExternalName backends at request time and needs a resolver for that. Cluster DNS
+# (kind's kube-dns Service is 10.96.0.10). Only scenarios/keep-serving/fallback.yaml (repo only) uses ExternalName.
+apiVersion: gateway.nginx.org/v1alpha2
+kind: NginxProxy
+metadata:
+  name: inference-gateway
+  namespace: gateway
+spec:
+  dnsResolver:
+    addresses:
+    - type: IPAddress
+      value: 10.96.0.10
+  # Also set by the Helm values (GatewayClass NginxProxy); repeated here so the data plane never
+  # pulls in-cluster even if this resource is applied on its own.
+  kubernetes:
+    deployment:
+      container:
+        image:
+          pullPolicy: Never
+---
+# Platform-issued grant: tenant routes may reach the shared model pools in `models`.
+# Deliberately broad: one grant for the platform's model service, while which pools each tenant may
+# use is the model allowlist (P2). Per-pool grants per tenant would also block the "Just point at
+# the big one" switch, but only at runtime (the route is stored and fails with RefNotPermitted),
+# not for pools in the tenant's own namespace, and with no report of routes already in place.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: tenants-to-shared-models
+  namespace: models
+spec:
+  from:
+  - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: team-assistant}
+  - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: team-research}
+  to:
+  - {group: inference.networking.k8s.io, kind: InferencePool}

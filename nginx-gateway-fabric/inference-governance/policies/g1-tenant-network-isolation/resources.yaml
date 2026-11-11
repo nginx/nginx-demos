@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: team-x, labels: {tenant: team-x, tier: standard}, uid: 00000000-0000-0000-0000-000000000001}
+---
+apiVersion: v1
+kind: Namespace
+metadata: {name: scratch, uid: 00000000-0000-0000-0000-000000000002}

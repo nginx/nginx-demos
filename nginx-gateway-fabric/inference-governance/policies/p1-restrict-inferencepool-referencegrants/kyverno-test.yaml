@@ -1,0 +1,11 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: p1-as-tenant
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+userinfo: userinfo.yaml
+results:
+- {policy: restrict-inferencepool-referencegrants, isValidatingPolicy: true, kind: ReferenceGrant, resources: [share-research-ft], result: fail}
+- {policy: restrict-inferencepool-referencegrants, isValidatingPolicy: true, kind: ReferenceGrant, resources: [share-services-only], result: skip}

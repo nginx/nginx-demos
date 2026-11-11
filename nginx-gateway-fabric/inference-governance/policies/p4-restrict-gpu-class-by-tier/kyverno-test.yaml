@@ -1,0 +1,20 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-gpu-class-by-tier
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [h100-standard, h100-no-tier], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [h100-premium, h100-shared], result: pass}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [l4-standard], result: skip}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Pod, resources: [h100-pod], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: StatefulSet, resources: [h100-sts], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [h100-nodeselector], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Job, resources: [h100-job], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Pod, resources: [l4-pod], result: skip}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Pod, resources: [h100-from-deployment], result: pass}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Pod, resources: [h100-from-handmade-rs], result: fail}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: ReplicaSet, resources: [h100-from-deployment-rs], result: pass}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: ReplicaSet, resources: [h100-own-rs], result: fail}

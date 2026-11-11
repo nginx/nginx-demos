@@ -1,0 +1,16 @@
+# Keep serving, with the policies: team-assistant re-applies its pool with FailOpen after the policy is in place.
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: shadow-70b
+  namespace: team-assistant
+  labels: {model: shadow-70b, cost-center: team-assistant}
+spec:
+  targetPorts: [{number: 8000}]
+  appProtocol: http
+  selector:
+    matchLabels: {model-pool: shadow-70b}
+  endpointPickerRef:
+    name: shadow-70b-epp
+    port: {number: 9002}
+    failureMode: FailOpen

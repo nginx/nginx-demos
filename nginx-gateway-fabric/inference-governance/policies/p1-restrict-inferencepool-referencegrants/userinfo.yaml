@@ -1,0 +1,4 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: UserInfo
+metadata: {name: team-research-dev}
+userInfo: {username: team-research-dev, groups: [system:authenticated]}

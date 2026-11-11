@@ -1,0 +1,122 @@
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: no-owner, namespace: team-assistant}
+spec: {selector: {matchLabels: {model-pool: no-owner}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: no-owner-epp, port: {number: 9002}}}
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata: {name: owned, namespace: team-assistant, labels: {cost-center: team-assistant}}
+spec: {selector: {matchLabels: {model-pool: owned}}, targetPorts: [{number: 8000}], endpointPickerRef: {name: owned-epp, port: {number: 9002}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: no-owner, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {model-pool: no-owner}}
+  template:
+    metadata: {labels: {model-pool: no-owner, inference.example.com/role: model-server, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: owned-model, namespace: team-assistant, labels: {cost-center: team-assistant}}
+spec:
+  selector: {matchLabels: {model-pool: owned}}
+  template:
+    metadata: {labels: {model-pool: owned, inference.example.com/role: model-server, gpu.example.com/class: l4, cost-center: team-assistant}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: web-frontend, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {app: web}}
+  template:
+    metadata: {labels: {app: web}}
+    spec: {containers: [{name: web, image: nginx}]}
+---
+# A bare Pod on a GPU, no controller at all.
+apiVersion: v1
+kind: Pod
+metadata: {name: bare-model, namespace: team-assistant, labels: {inference.example.com/role: model-server, gpu.example.com/class: h100}}
+spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: owned-pod, namespace: team-assistant, labels: {inference.example.com/role: model-server, cost-center: team-assistant}}
+spec: {containers: [{name: sim, image: sim}]}
+---
+# Large models often run as StatefulSets.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: no-owner-sts, namespace: team-assistant}
+spec:
+  serviceName: x
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, inference.example.com/role: model-server}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+# Owner on the workload but not on its pods: the pods are what run (and get billed).
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: owner-not-on-pods, namespace: team-assistant, labels: {cost-center: team-assistant}}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, inference.example.com/role: model-server}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: nightly-eval, namespace: team-assistant}
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata: {labels: {inference.example.com/role: model-server}}
+        spec: {restartPolicy: Never, containers: [{name: sim, image: sim}]}
+---
+# Made by a Deployment's ReplicaSet: reported at the Deployment, not again per Pod.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: from-deployment
+  namespace: team-assistant
+  labels: {inference.example.com/role: model-server}
+  ownerReferences: [{apiVersion: apps/v1, kind: ReplicaSet, name: owned-model-7d9f, uid: 00000000-0000-0000-0000-0000000000a2, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}
+---
+# Made by a hand-made ReplicaSet (which Kyverno doesn't check): the Pod is where it's caught.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: from-handmade-rs
+  namespace: team-assistant
+  labels: {inference.example.com/role: model-server}
+  ownerReferences: [{apiVersion: apps/v1, kind: ReplicaSet, name: handmade-rs, uid: 00000000-0000-0000-0000-0000000000a3, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}
+---
+# A Deployment's ReplicaSet: reported at the Deployment, not again here.
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: from-deployment-rs
+  namespace: team-assistant
+  ownerReferences: [{apiVersion: apps/v1, kind: Deployment, name: owned-model, uid: 00000000-0000-0000-0000-0000000000b1, controller: true}]
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, inference.example.com/role: model-server}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+# A ReplicaSet a tenant made by hand: checked like any workload.
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata: {name: own-rs, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, inference.example.com/role: model-server}}
+    spec: {containers: [{name: sim, image: sim}]}

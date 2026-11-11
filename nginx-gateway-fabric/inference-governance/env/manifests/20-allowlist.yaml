@@ -1,0 +1,10 @@
+# Which InferencePools each tenant may route to, as <namespace>/<pool>. Read by P2.
+# Owned by the platform team (tenants can't edit the kyverno namespace).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-allowlist
+  namespace: kyverno
+data:
+  team-assistant: models/llama-8b
+  team-research: models/llama-8b, models/llama-70b, team-research/research-ft

@@ -1,0 +1,63 @@
+# Lets Kyverno's controllers read the kinds the policies look up and generate the downstream
+# objects. Aggregated into the chart's ClusterRoles via the rbac.kyverno.io/aggregate-to-* labels.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-inference-read
+  labels:
+    rbac.kyverno.io/aggregate-to-admission-controller: "true"
+    rbac.kyverno.io/aggregate-to-reports-controller: "true"
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+rules:
+- apiGroups: [inference.networking.k8s.io]
+  resources: [inferencepools]
+  verbs: [get, list, watch]
+- apiGroups: [llm-d.ai]
+  resources: [inferenceobjectives]
+  verbs: [get, list, watch]
+- apiGroups: [gateway.networking.k8s.io]
+  resources: [httproutes, referencegrants]
+  verbs: [get, list, watch]
+- apiGroups: [""]
+  resources: [configmaps, namespaces, services, pods]
+  verbs: [get, list, watch]
+# P3/P4 match every workload controller, and read a Pod's ReplicaSet to find its Deployment.
+- apiGroups: [apps]
+  resources: [deployments, statefulsets, daemonsets, replicasets]
+  verbs: [get, list, watch]
+- apiGroups: [batch]
+  resources: [jobs, cronjobs]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-inference-generate
+  labels:
+    rbac.kyverno.io/aggregate-to-background-controller: "true"
+rules:
+- apiGroups: [networking.k8s.io]
+  resources: [networkpolicies]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [gateway.nginx.org]
+  resources: [ratelimitpolicies]
+  verbs: [get, list, watch, create, update, patch, delete]
+---
+# C1 (DeletingPolicy): the cleanup controller lists and deletes unowned model servers, and reads
+# namespaces to tell tenants from the platform.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-inference-cleanup
+  labels:
+    rbac.kyverno.io/aggregate-to-cleanup-controller: "true"
+rules:
+- apiGroups: [apps]
+  resources: [deployments, statefulsets]
+  verbs: [get, list, watch, delete]
+- apiGroups: [batch]
+  resources: [jobs]
+  verbs: [get, list, watch, delete]
+- apiGroups: [""]
+  resources: [namespaces]
+  verbs: [get, list, watch]

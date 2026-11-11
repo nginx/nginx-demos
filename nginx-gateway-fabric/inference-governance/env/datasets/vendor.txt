@@ -1,0 +1,3 @@
+# The answer served by the mock external vendor (scenarios/keep-serving/fallback.yaml, repo only). Matches the clip's prompt ("What is my
+# account balance?"): the customer's account data came back from outside the cluster.
+Your account balance is 1,284.50 USD, due on 14 November. (Answered by vendor-frontier-model, an external API.)

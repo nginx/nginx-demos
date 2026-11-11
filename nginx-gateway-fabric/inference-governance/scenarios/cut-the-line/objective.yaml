@@ -1,0 +1,10 @@
+# Top priority for team-assistant's requests on its pool (shadow-70b, from "Shadow GPU"). Standard tier gets 0.
+apiVersion: llm-d.ai/v1alpha2
+kind: InferenceObjective
+metadata:
+  name: assistant-vip
+  namespace: team-assistant
+spec:
+  priority: 100
+  poolRef:
+    name: shadow-70b
