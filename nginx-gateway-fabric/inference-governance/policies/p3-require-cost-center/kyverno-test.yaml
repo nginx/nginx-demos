@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-cost-center
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: require-cost-center, isValidatingPolicy: true, kind: InferencePool, resources: [no-owner], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: InferencePool, resources: [owned], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [no-owner], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [owned-model], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [web-frontend], result: skip}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Pod, resources: [bare-model], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Pod, resources: [owned-pod], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: StatefulSet, resources: [no-owner-sts], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [owner-not-on-pods], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: CronJob, resources: [nightly-eval], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Pod, resources: [from-deployment], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Pod, resources: [from-handmade-rs], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: ReplicaSet, resources: [from-deployment-rs], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: ReplicaSet, resources: [own-rs], result: fail}

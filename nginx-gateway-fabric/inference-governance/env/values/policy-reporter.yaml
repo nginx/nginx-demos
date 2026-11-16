@@ -1,0 +1,11 @@
+image:
+  pullPolicy: Never          # images are preloaded with `make images` (see env/images.sh)
+ui:
+  enabled: true
+  image:
+    pullPolicy: Never
+plugin:
+  kyverno:
+    enabled: true
+    image:
+      pullPolicy: Never

@@ -1,0 +1,13 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: assistant, namespace: team-assistant, uid: 00000000-0000-0000-0000-000000000011}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: research, namespace: team-research, uid: 00000000-0000-0000-0000-000000000012}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: research-ft}]

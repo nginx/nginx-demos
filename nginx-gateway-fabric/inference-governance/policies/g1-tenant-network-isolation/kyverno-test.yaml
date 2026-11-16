@@ -1,0 +1,9 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: tenant-network-isolation
+policies: [policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+results:
+- {policy: tenant-network-isolation, isGeneratingPolicy: true, kind: Namespace, resources: [team-x], generatedResource: generated.yaml, result: pass}

@@ -1,0 +1,11 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: owner-check-controller
+policies: [../p3-require-cost-center/policy.yaml, ../p4-restrict-gpu-class-by-tier/policy.yaml]
+resources: [resources.yaml]
+clusterResources: [../_shared/cluster.yaml]
+userinfo: userinfo.yaml
+results:
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Pod, resources: [from-statefulset], result: pass}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Pod, resources: [from-statefulset], result: pass}

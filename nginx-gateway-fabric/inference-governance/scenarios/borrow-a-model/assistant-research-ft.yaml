@@ -1,0 +1,15 @@
+# team-assistant points a customer-facing 'pro' assistant at team-research's fine-tuned model.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: assistant-pro
+  namespace: team-assistant
+spec:
+  parentRefs: [{name: inference-gateway, namespace: gateway}]
+  hostnames: [assistant-pro.example]
+  rules:
+  - backendRefs:
+    - group: inference.networking.k8s.io
+      kind: InferencePool
+      name: research-ft
+      namespace: team-research

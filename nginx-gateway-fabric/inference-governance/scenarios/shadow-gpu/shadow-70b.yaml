@@ -1,0 +1,320 @@
+# Shadow GPU: team-assistant stands up its own 70B model on h100 GPUs, with an endpoint picker and
+# InferencePool rendered from the llm-d-router chart. No cost-center label anywhere.
+# Regenerate: env/models.sh shadow-70b team-assistant h100 general - FailClose
+---
+# Source: llm-d-router-gateway/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shadow-70b-epp
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shadow-70b-epp
+  namespace: team-assistant
+data:
+  default-plugins.yaml: |
+    apiVersion: llm-d.ai/v1alpha1
+    kind: EndpointPickerConfig
+    plugins:
+    - type: queue-scorer
+    - type: kv-cache-utilization-scorer
+    - type: prefix-cache-scorer
+    - type: metrics-data-source
+      parameters:
+        scheme: "http"
+        path: "/metrics"
+        insecureSkipVerify: true
+    - type: core-metrics-extractor
+    schedulingProfiles:
+    - name: default
+      plugins:
+      - pluginRef: queue-scorer
+        weight: 2
+      - pluginRef: kv-cache-utilization-scorer
+        weight: 2
+      - pluginRef: prefix-cache-scorer
+        weight: 3
+  payload-agnostic.yaml: |
+    # Request-format agnostic routing. Use this when the request format is
+    # unknown or unsupported, so the EPP cannot rely on scorers that read the
+    # request body (e.g. the prefix-cache scorer). The passthrough parser does
+    # not parse the body, and routing falls back to backend-state scorers:
+    #   - active-request-scorer  : prefers the least busy endpoint
+    #   - session-affinity-scorer: keeps a session pinned to the same endpoint
+    # Select it by setting router.epp.pluginsConfigFile: payload-agnostic.yaml
+    apiVersion: llm-d.ai/v1alpha1
+    kind: EndpointPickerConfig
+    plugins:
+    - type: passthrough-parser
+    - type: active-request-scorer
+    - type: session-affinity-scorer
+    requestHandler:
+      parsers:
+      - pluginRef: passthrough-parser
+    schedulingProfiles:
+    - name: default
+      plugins:
+      - pluginRef: active-request-scorer
+        weight: 1
+      - pluginRef: session-affinity-scorer
+        weight: 1
+---
+# Source: llm-d-router-gateway/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shadow-70b-epp-non-sa
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+rules:
+  - apiGroups: ["inference.networking.x-k8s.io"]
+    resources: ["inferenceobjectives", "inferencemodelrewrites"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["llm-d.ai"]
+    resources: ["inferenceobjectives", "inferencemodelrewrites"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["inference.networking.k8s.io"]
+    resources: ["inferencepools"]
+    verbs: ["get", "watch", "list"]
+---
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shadow-70b-epp-sa
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "watch", "list"]
+---
+# Source: llm-d-router-gateway/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shadow-70b-epp-non-sa
+  namespace: team-assistant
+subjects:
+  - kind: ServiceAccount
+    name: shadow-70b-epp
+    namespace: team-assistant
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shadow-70b-epp-non-sa
+---
+# Source: llm-d-router-gateway/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shadow-70b-epp-sa
+  namespace: team-assistant
+subjects:
+  - kind: ServiceAccount
+    name: shadow-70b-epp
+    namespace: team-assistant
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shadow-70b-epp-sa
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shadow-70b-epp
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+spec:
+  selector:
+    llm-d-router-gateway: shadow-70b-epp
+  ports:
+    - name: grpc-ext-proc
+      protocol: TCP
+      port: 9002
+      appProtocol: kubernetes.io/h2c
+    - name: http-metrics
+      protocol: TCP
+      port: 9090
+  type: ClusterIP
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shadow-70b-epp
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+    llm-d.ai/igw-mode: llm-d-router-gateway
+spec:
+  replicas: 1
+  strategy:
+    # The current recommended EPP deployment pattern is to have a single active replica. This ensures
+    # optimal performance of the stateful operations such prefix cache aware scorer.
+    # The Recreate strategy the old replica is killed immediately, and allow the new replica(s) to
+    # quickly take over. This is particularly important in the high availability set up with leader
+    # election, as the rolling update strategy would prevent the old leader being killed because
+    # otherwise the maxUnavailable would be 100%.
+    #
+    # With replicas > 1 this also means the Deployment never reports Available=True,
+    # because standby replicas stay NotReady by design. Set router.epp.deploymentStrategy
+    # if that blocks your tooling; see "Multi-replica EPP and Helm --wait" in the chart README.
+    type: Recreate
+  selector:
+    matchLabels:
+      llm-d-router-gateway: shadow-70b-epp
+  template:
+    metadata:
+      labels:
+        llm-d-router-gateway: shadow-70b-epp
+        llm-d.ai/igw-mode: llm-d-router-gateway
+      annotations:
+        checksum/config: 9b89ac17f23e02e9a81715176480bf950067b1b1c88b7e7f8e81e38d3d42d55f
+    spec:
+      serviceAccountName: shadow-70b-epp
+      # Conservatively, this timeout should mirror the longest grace period of the pods within the pool
+      terminationGracePeriodSeconds: 130
+      containers:
+        - name: epp
+          image: ghcr.io/llm-d/llm-d-router-endpoint-picker:v0.11.0
+          imagePullPolicy: Never
+          args:
+            - --pool-name
+            - shadow-70b
+            # The pool namespace is optional because EPP can default to the NAMESPACE env var.
+            - --pool-namespace
+            - team-assistant
+            - --pool-group
+            - "inference.networking.k8s.io"
+            - --zap-encoder
+            - "json"
+            - --config-file
+            - "/config/default-plugins.yaml"
+            - --grpc-health-port
+            - "9003"
+            # Pass additional flags via the router.epp.flags field in values.yaml.
+            # Render them as --flag=value so boolean values are parsed correctly.
+            - --tracing=false
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          ports:
+            - name: grpc
+              containerPort: 9002
+            - name: grpc-health
+              containerPort: 9003
+            - name: metrics
+              containerPort: 9090
+          livenessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            grpc:
+              port: 9003
+              service: inference-extension
+            periodSeconds: 2
+          # Allow in-flight gRPC streams to drain and give Envoy health checks
+          # time to detect termination and shift traffic to standby endpoints before SIGTERM.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: plugins-config-volume
+              mountPath: "/config"
+      volumes:
+        - name: plugins-config-volume
+          configMap:
+            name: shadow-70b-epp
+---
+
+---
+
+---
+# Source: llm-d-router-gateway/templates/epp.yaml
+apiVersion: "inference.networking.k8s.io/v1"
+kind: InferencePool
+metadata:
+  name: shadow-70b
+  namespace: team-assistant
+  labels:
+    app.kubernetes.io/name: shadow-70b-epp
+    app.kubernetes.io/version: "0.0.0"
+    model: shadow-70b
+spec:
+  targetPorts:
+    - number: 8000
+  appProtocol: "http"
+  selector:
+    matchLabels:
+      model-pool: "shadow-70b"
+  endpointPickerRef:
+    name: shadow-70b-epp
+    port:
+      number: 9002
+    failureMode: FailClose
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shadow-70b
+  namespace: team-assistant
+  labels: {model-pool: shadow-70b}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {model-pool: shadow-70b}
+  template:
+    metadata:
+      labels:
+        model-pool: shadow-70b
+        
+        gpu.example.com/class: h100
+        inference.example.com/role: model-server
+    spec:
+      containers:
+      - name: sim
+        image: ghcr.io/llm-d/llm-d-inference-sim:v1.0.0
+        imagePullPolicy: Never   # preloaded by env/images.sh
+        # Served as "<name>" and "auto": clients always ask for "auto", the reply names the real model.
+        args: [--model, shadow-70b, --served-model-name, shadow-70b, auto, --port, "8000", --dataset-path, /data/dataset.sqlite3,
+               --time-to-first-token, 200ms, --inter-token-latency, 20ms, --max-num-seqs, "8"]
+        ports: [{name: http, containerPort: 8000}]
+        readinessProbe: {httpGet: {path: /health, port: http}}
+        resources: {requests: {cpu: 10m, memory: 64Mi}}
+        volumeMounts: [{name: dataset, mountPath: /data}]
+      volumes:
+      - name: dataset
+        configMap: {name: dataset-general, items: [{key: dataset.sqlite3, path: dataset.sqlite3}]}

@@ -1,0 +1,34 @@
+# P7 ("Keep serving"): in regulated namespaces an InferencePool may not fail open. With FailOpen,
+# requests skip the endpoint picker when it's down, losing scheduling, priority and fairness.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: deny-failopen-for-regulated
+  annotations:
+    policies.kyverno.io/title: Deny FailOpen for regulated tenants
+    policies.kyverno.io/description: InferencePools in regulated namespaces must not set endpointPickerRef.failureMode FailOpen.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [inference.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [inferencepools]
+  matchConditions:
+  - name: fails-open
+    expression: object.spec.endpointPickerRef.?failureMode.orValue('FailClose') == 'FailOpen'
+  variables:
+  - name: regulated
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'regulated']
+      .orValue('false') == 'true'
+  validations:
+  - expression: "!variables.regulated"
+    messageExpression: >-
+      object.metadata.namespace + ' is regulated: FailOpen is not allowed (' + object.metadata.name +
+      '): requests must go through the endpoint picker; ask the platform team'
+    message: regulated tenants must fail closed; ask the platform team

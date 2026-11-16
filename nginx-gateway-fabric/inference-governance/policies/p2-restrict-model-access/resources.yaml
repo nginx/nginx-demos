@@ -1,0 +1,96 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: allowed-shared, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: big-model, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}]
+---
+# backendRef with no namespace = the route's own namespace; the pool's model label still counts.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: own-pool-unlisted, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: own-pool}]
+---
+# Second rule smuggles in the big model.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: second-rule, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+  - matches: [{headers: [{name: x-tier, value: gold}]}]
+    backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}]
+---
+# Service backends aren't P2's concern (P6 handles those).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: service-only, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{name: some-service, port: 80}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: premium-big-model, namespace: team-research}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}]
+---
+# A tenant with no allowlist entry gets a clear message, not a CEL error.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: no-allowlist, namespace: team-unlabelled}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+---
+# Platform namespaces are out of scope.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: platform-route, namespace: gateway}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}]
+---
+# Allowed primary, but every request is mirrored to the big model.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: mirror-to-big, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-8b, namespace: models}]
+    filters:
+    - type: RequestMirror
+      requestMirror: {backendRef: {group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}}
+---
+# Same, with the mirror on the backendRef instead of the rule.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: backend-mirror-to-big, namespace: team-assistant}
+spec:
+  rules:
+  - backendRefs:
+    - group: inference.networking.k8s.io
+      kind: InferencePool
+      name: llama-8b
+      namespace: models
+      filters:
+      - type: RequestMirror
+        requestMirror: {backendRef: {group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}}
+---
+# A namespace with no tenant label is a tenant (no allowlist), not platform.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: unlabelled-ns, namespace: no-labels}
+spec:
+  rules:
+  - backendRefs: [{group: inference.networking.k8s.io, kind: InferencePool, name: llama-70b, namespace: models}]

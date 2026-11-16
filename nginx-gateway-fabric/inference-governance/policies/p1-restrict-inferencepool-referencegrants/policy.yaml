@@ -1,0 +1,33 @@
+# P1 ("Borrow a model"): only the platform team may share InferencePools across namespaces.
+# Uses only standard CEL and request.userInfo, so Kyverno can also emit it as a native
+# ValidatingAdmissionPolicy (spec.autogen) that the API server enforces without Kyverno.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: restrict-inferencepool-referencegrants
+  annotations:
+    policies.kyverno.io/title: Restrict InferencePool ReferenceGrants
+    policies.kyverno.io/description: Only the platform team may create ReferenceGrants that expose InferencePools.
+spec:
+  validationActions: [Deny]
+  autogen:
+    validatingAdmissionPolicy:
+      enabled: true
+  evaluation:
+    background:
+      enabled: false   # depends on who made the request; meaningless in a background scan
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [gateway.networking.k8s.io]
+      apiVersions: [v1, v1beta1]
+      operations: [CREATE, UPDATE]
+      resources: [referencegrants]
+  matchConditions:
+  - name: shares-inferencepools
+    expression: >-
+      object.spec.to.exists(t, t.group == 'inference.networking.k8s.io' && t.kind == 'InferencePool')
+  validations:
+  - expression: >-
+      'platform-admins' in request.userInfo.groups || 'system:masters' in request.userInfo.groups
+    messageExpression: >-
+      'only the platform team can share InferencePools (' + request.userInfo.username + ')'

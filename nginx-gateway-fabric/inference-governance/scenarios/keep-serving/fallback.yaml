@@ -1,0 +1,22 @@
+# Repo only, no clip applies it (the old "Plan B"): when the pool is busy, the app retries
+# against assistant-fallback.example, which team-assistant routes to an external vendor API through an ExternalName Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: vendor-fallback
+  namespace: team-assistant
+spec:
+  type: ExternalName
+  externalName: vendor-api.vendor.svc.cluster.local
+  ports: [{name: http, port: 80}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: assistant-fallback
+  namespace: team-assistant
+spec:
+  parentRefs: [{name: inference-gateway, namespace: gateway}]
+  hostnames: [assistant-fallback.example]
+  rules:
+  - backendRefs: [{name: vendor-fallback, port: 80}]

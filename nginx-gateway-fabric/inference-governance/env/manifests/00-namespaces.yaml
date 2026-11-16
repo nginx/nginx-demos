@@ -1,0 +1,33 @@
+# Fictional cast. Labels drive every policy:
+#   tenant     -> who owns the namespace (platform = shared infrastructure)
+#   tier       -> standard | premium (GPU class, priority cap, rate limit)
+#   regulated  -> "true" forbids FailOpen
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+  labels: {tenant: platform}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: models
+  labels: {tenant: platform}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vendor
+  labels: {tenant: platform}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-research
+  labels: {tenant: team-research, tier: premium}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-assistant
+  labels: {tenant: team-assistant, tier: standard, regulated: "true"}

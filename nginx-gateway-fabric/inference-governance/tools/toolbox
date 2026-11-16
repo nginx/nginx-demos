@@ -1,0 +1,128 @@
+#!/bin/sh
+# Runs commands in the lab: a long-running container (env/toolbox/Dockerfile) with every tool the
+# demo needs and its own Docker daemon, which holds the demo images and the kind cluster. Every make
+# target goes through this, so the host needs only Docker, make and git.
+#
+#   tools/toolbox                interactive shell in the lab (`make shell`); run clips from here
+#   tools/toolbox <command...>   run a command in the lab
+#   tools/toolbox --stop         stop the lab and its cluster to free CPU and memory (`make stop`);
+#                                the next command starts it again, cluster and images intact
+#   tools/toolbox --remove       delete the lab, its images and its cluster (`make clean`)
+#
+# The lab is (re)created when versions.env or the Dockerfile changes, which also discards the
+# cluster and pulled images inside it. The repo is mounted at the same path as on the host. Ports
+# 8080 (gateway) and 8082 (Policy Reporter) are published on the host's localhost.
+#
+# Plain POSIX sh on purpose: this is the one script that runs on the host (macOS ships bash 3.2).
+set -eu
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+CLUSTER_NAME=$(sed -n 's/^CLUSTER_NAME=//p' "$ROOT/versions.env")
+LAB="$CLUSTER_NAME-lab"
+
+if [ "${1:-}" = --stop ]; then
+  if [ "$(docker inspect -f '{{.State.Running}}' "$LAB" 2>/dev/null)" = true ]; then
+    docker stop "$LAB" >/dev/null && echo "stopped $LAB (next command starts it again; then make reset)"
+  else
+    echo "$LAB isn't running"
+  fi
+  exit 0
+fi
+if [ "${1:-}" = --remove ]; then
+  docker rm -fv "$LAB" >/dev/null 2>&1 && echo "removed $LAB" || echo "$LAB doesn't exist"
+  exit 0
+fi
+
+cd "$ROOT"
+
+# Behind a TLS-intercepting proxy, set CA_BUNDLE to its CA (a PEM file) so the lab can download
+# tools and pull images: CA_BUNDLE=~/proxy-ca.pem make up. It goes to the build as an optional
+# secret and to the lab as a read-only mount, so no image layer contains it. A copy is kept in
+# .cache/ for later runs; an empty file means none.
+ca=.cache/ca-bundle.pem
+mkdir -p .cache
+if [ -n "${CA_BUNDLE:-}" ]; then
+  cp "$CA_BUNDLE" "$ca"
+fi
+[ -f "$ca" ] || : > "$ca"   # empty file: build secret and entrypoint both skip it
+
+# Image tag = hash of everything that goes into it, so a version bump rebuilds and nothing else does.
+hash=$(cat versions.env env/toolbox/Dockerfile env/toolbox/entrypoint.sh | shasum -a 256 | cut -c1-12)
+image="$CLUSTER_NAME-toolbox:$hash"
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+  echo "building $image (first run, or versions.env / the Dockerfile changed)" >&2
+  build_args=$(sed -nE 's/^([A-Z_]+_(IMAGE|VERSION))=([^ #]+).*/--build-arg \1=\3/p' versions.env)
+  # shellcheck disable=SC2086  # build_args is a list of words on purpose
+  docker build -q -t "$image" $build_args --secret id=ca-bundle,src="$ca" env/toolbox >/dev/null
+fi
+
+# Start the lab, replacing one built from an older image.
+current=$(docker inspect -f '{{.Config.Image}}' "$LAB" 2>/dev/null || true)
+if [ -n "$current" ] && [ "$current" != "$image" ]; then
+  echo "toolbox changed: recreating $LAB (its cluster and images go with it; run make up)" >&2
+  docker rm -fv "$LAB" >/dev/null
+  current=
+fi
+# Drop older toolbox builds (about 1 GB each). Only after the lab stops using one, or rmi refuses.
+if [ -z "$current" ]; then
+  docker images --format '{{.Repository}}:{{.Tag}}' "$CLUSTER_NAME-toolbox" | grep -vx "$image" \
+    | xargs docker rmi >/dev/null 2>&1 || true
+fi
+if [ -z "$current" ]; then
+  docker run -d --name "$LAB" --privileged \
+    -e DOCKER_TLS_CERTDIR= \
+    -v "$ROOT:$ROOT" \
+    -v "$ROOT/$ca:/etc/ca-bundle.pem:ro" \
+    -e KUBECONFIG="$ROOT/.cache/kubeconfig" \
+    -p 127.0.0.1:8080:8080 -p 127.0.0.1:8082:8082 \
+    "$image" >/dev/null
+elif [ "$(docker inspect -f '{{.State.Running}}' "$LAB")" != true ]; then
+  docker start "$LAB" >/dev/null
+  restarted=1
+fi
+i=0
+until docker exec "$LAB" docker info >/dev/null 2>&1; do
+  i=$((i + 1))
+  [ $i -lt 60 ] || { echo "$LAB: Docker daemon didn't start; see: docker logs $LAB" >&2; exit 1; }
+  sleep 1
+done
+
+# After `make stop`, the kind nodes come back with the lab, but for a minute or two the cluster
+# isn't usable: the API server answers Forbidden until its authorizer syncs, NGF's controller
+# crash-loops until the cluster network is up, and the gateway returns 500s until the endpoint
+# pickers are back. Pod and Deployment status still show Ready from before the stop, so wait until
+# every container is ready *and* started after the lab did, and both baseline routes answer.
+# Plain curl: tools/chat.sh would add to the cost meter.
+if [ "${restarted:-}" = 1 ] && docker exec "$LAB" kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
+  echo "$LAB was stopped; waiting for the cluster to come back (1-2 minutes)" >&2
+  docker exec -e KUBECONFIG="$ROOT/.cache/kubeconfig" -w "$ROOT" \
+    -e LAB_STARTED="$(docker inspect -f '{{.State.StartedAt}}' "$LAB")" "$LAB" bash -c '
+    source versions.env
+    fresh() {
+      kubectl get pods -A -o json 2>/dev/null | jq -e --arg s "$LAB_STARTED" "
+        (\$s | sub(\"\\\\.[0-9]+\"; \"\") | fromdateiso8601) as \$t
+        | [.items[] | select(.status.phase == \"Pending\" or .status.phase == \"Running\")
+           | select(.status.phase == \"Pending\" or any(.status.containerStatuses[]?;
+               .ready != true or ((.state.running.startedAt // \"1970-01-01T00:00:00Z\") | fromdateiso8601) < \$t))]
+        | length == 0" >/dev/null
+    }
+    answers() {
+      [ "$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$GATEWAY_URL/v1/chat/completions" -H "Host: $1" \
+        -H "Content-Type: application/json" -d "{\"model\":\"auto\",\"max_tokens\":5,\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}")" = 200 ]
+    }
+    for i in $(seq 1 150); do
+      kubectl auth can-i list validatingpolicies.policies.kyverno.io -A >/dev/null 2>&1 &&
+        fresh && answers assistant.example && answers research.example && exit 0
+      sleep 2
+    done
+    exit 1' || echo "$LAB: cluster not ready after 5 minutes; try make verify" >&2
+fi
+
+# Run in the same directory as on the host (falls back to the repo root).
+case "$PWD" in "$ROOT"*) wd=$PWD ;; *) wd=$ROOT ;; esac
+tty=-i
+if [ -t 0 ] && [ -t 1 ]; then tty=-it; fi
+[ $# -gt 0 ] || set -- bash
+# No Docker Desktop "What's next" hints after the command: they'd land in a recording.
+DOCKER_CLI_HINTS=false exec docker exec $tty -w "$wd" \
+  -e DEMO_AUTO="${DEMO_AUTO:-}" -e TYPE_DELAY="${TYPE_DELAY:-}" -e PS1='$ ' \
+  "$LAB" "$@"
