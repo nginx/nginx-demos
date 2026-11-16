@@ -41,9 +41,12 @@ rules:
 - apiGroups: [inference.networking.x-k8s.io]
   resources: [inferenceobjectives, inferencemodelrewrites]
   verbs: [get, list, watch]
+# Rate limits are the platform's: Kyverno generates one per tenant route (G2). Tenants may see and
+# delete them ("Valid config, bad request" shows Kyverno putting a deleted one back), but not write
+# their own.
 - apiGroups: [gateway.nginx.org]
   resources: [ratelimitpolicies]
-  verbs: ["*"]
+  verbs: [get, list, watch, delete]
 - apiGroups: [wgpolicyk8s.io]
   resources: [policyreports]
   verbs: [get, list, watch]

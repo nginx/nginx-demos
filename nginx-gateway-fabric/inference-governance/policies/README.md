@@ -43,7 +43,10 @@ C1 has CLI tests only.
 - P3 and P4 match Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets, Jobs and CronJobs.
   What a checked controller creates (a Deployment's ReplicaSet, and Pods from a StatefulSet,
   DaemonSet, Job or a Deployment's ReplicaSet) isn't reported again; a hand-made ReplicaSet and
-  its Pods are. Kyverno's default `resourceFilters` skip ReplicaSets at admission, but the
+  its Pods are. ownerReferences are whatever the creator writes, so at admission that only counts
+  when one of the Kubernetes controllers made the request (each runs as its own `kube-system`
+  service account); a tenant's bare Pod that claims an owner is checked like any bare Pod
+  (`owner-check-tenant` and `owner-check-controller` test both). Kyverno's default `resourceFilters` skip ReplicaSets at admission, but the
   background scan of CEL policies still reports them, so the policies skip them themselves. P4
   looks at the pod label and the nodeSelector; a real cluster would also check node affinity and
   DRA DeviceClasses.

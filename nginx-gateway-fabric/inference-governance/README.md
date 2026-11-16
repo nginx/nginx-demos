@@ -105,7 +105,7 @@ from `make up` or `make reset`.
 | `make reset` | Remove every demo policy, report and generated object, and restore the starting state (about a minute) |
 | `make stop` | Stop the lab and the cluster; any target starts them again, then `make reset` |
 | `make down` / `make clean` | Delete the cluster / delete the lab, cluster and images included |
-| `make test` / `make lint` | Kyverno CLI tests (94) / shellcheck and yamllint |
+| `make test` / `make lint` | Kyverno CLI tests (98) / shellcheck and yamllint |
 
 ### Behind a TLS-intercepting proxy
 

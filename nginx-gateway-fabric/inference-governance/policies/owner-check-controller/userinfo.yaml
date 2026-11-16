@@ -1,0 +1,4 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: UserInfo
+metadata: {name: statefulset-controller}
+userInfo: {username: "system:serviceaccount:kube-system:statefulset-controller", groups: [system:serviceaccounts, system:serviceaccounts:kube-system, system:authenticated]}
