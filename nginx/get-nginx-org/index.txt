@@ -1,0 +1,26 @@
+get.nginx.org: one-line installers for NGINX Open Source
+
+  https://get.nginx.org/nginx
+      Installs nginx from the nginx.org package repositories.
+
+      curl -fsSL https://get.nginx.org/nginx | sh
+
+      Options (after "sh -s --"):
+        --stable        stable branch instead of mainline
+        --module NAME   add a dynamic module: acme geoip image-filter njs
+                        otel perl xslt (repeat for more)
+        --dry-run       show the plan and commands, change nothing
+        --yes           skip the 10-second pause
+        --help          show all options and supported systems
+
+      Supports RHEL and derivatives 8-10, Debian 12-13, Ubuntu 22.04-26.04,
+      SLES 15 SP7+ and 16, Alpine 3.21-3.24, and Amazon Linux 2023, on
+      x86_64 and aarch64.
+
+Piping a download into a shell runs it unread. To review it first:
+
+  curl -fsSL https://get.nginx.org/nginx -o install-nginx.sh
+  less install-nginx.sh
+  sh install-nginx.sh
+
+Manual installation steps: https://nginx.org/en/linux_packages.html
