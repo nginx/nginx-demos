@@ -5,7 +5,12 @@ get.nginx.org: one-line installers for NGINX Open Source
 
       curl -fsSL https://get.nginx.org/nginx | sh
 
-      Options (after "sh -s --"):
+      To pass options, add "-s --" after sh. For example, to install the
+      stable branch with the njs module:
+
+      curl -fsSL https://get.nginx.org/nginx | sh -s -- --stable --module njs
+
+      Options:
         --stable        stable branch instead of mainline
         --module NAME   add a dynamic module: acme geoip image-filter njs
                         otel perl xslt (repeat for more)
@@ -21,6 +26,7 @@ Piping a download into a shell runs it unread. To review it first:
 
   curl -fsSL https://get.nginx.org/nginx -o install-nginx.sh
   less install-nginx.sh
-  sh install-nginx.sh
+  sh install-nginx.sh --dry-run
+  sh install-nginx.sh --stable --module njs
 
 Manual installation steps: https://nginx.org/en/linux_packages.html
