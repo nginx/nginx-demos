@@ -44,12 +44,14 @@ curl -fsSL https://get.nginx.org/nginx | sh -s -- --stable --module njs
 
 The script runs as root, or uses `sudo` or `doas` if it isn't.
 
-Running the script again with `--stable` on a host with mainline installed switches the repository to stable, but package managers don't downgrade on their own. Rather than downgrade nginx unattended, which can break a configuration that uses mainline features, the script stops with an error and prints the command for that system, for example:
+Running the script again upgrades nginx and its modules to the latest version on the chosen branch, including from stable to mainline. Running it again with `--stable` on a host with mainline installed switches the repository to stable, but package managers don't downgrade on their own. Rather than downgrade nginx unattended, which can break a configuration that uses mainline features, the script stops with an error and prints the command for that system, for example:
 
 ```sh
 apt-get install --allow-downgrades nginx/noble nginx-module-njs/noble
 dnf distro-sync nginx nginx-module-njs
 ```
+
+On Debian and Ubuntu, if the nginx packages are held, the command starts with `apt-mark unhold`. On other systems, remove any lock on nginx first, such as a `dnf versionlock` or `zypper addlock`.
 
 To read the script before running it:
 

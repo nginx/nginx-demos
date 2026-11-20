@@ -448,10 +448,14 @@ install_prerequisites() {
 verify_pgp_key() {
     fetch "$PGP_KEY_URL" "$key_file"
     mkdir -m 700 "$tmp_dir/gnupg"
+    # gpg can print some keys and still fail on the rest of the file, so check
+    # its exit status before trusting what it printed.
+    _keys=$(gpg --homedir "$tmp_dir/gnupg" --batch --with-colons --show-keys "$key_file" 2>/dev/null) ||
+        die "gpg couldn't read $PGP_KEY_URL.
+Nothing was installed from nginx.org."
     # The fingerprint is field 10 of the fpr line after each pub line. sed, not
     # awk, because SUSE's minimal images don't have awk.
-    _found=$(gpg --homedir "$tmp_dir/gnupg" --batch --with-colons --show-keys "$key_file" 2>/dev/null |
-        sed -n '/^pub:/{n;s/^fpr:\{9\}\([0-9A-F]*\):.*/\1/p;}')
+    _found=$(printf '%s\n' "$_keys" | sed -n '/^pub:/{n;s/^fpr:\{9\}\([0-9A-F]*\):.*/\1/p;}')
     [ -n "$_found" ] || die "$PGP_KEY_URL doesn't contain any PGP keys."
 
     for _fpr in $_found; do
@@ -561,30 +565,43 @@ nginx.org is set up as a repository, but nothing was installed from it."
             ;;
         dnf|microdnf) run "$pkg" install -y $packages ;;
         zypper) run zypper --non-interactive install --from "nginx-$channel" $packages ;;
-        apk) run apk add --no-cache $packages ;;
+        # Without --upgrade, apk add keeps an installed version that still
+        # satisfies the request, unlike the other package managers' install.
+        apk) run apk add --no-cache --upgrade $packages ;;
     esac
 }
 
 # The nginx packages installed now, for downgrade_command.
 installed_packages() {
     case $pkg in
+        # The second status letter is i for installed. The first is the
+        # selection, which is h rather than i for a held package.
         apt) dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'nginx*' 2>/dev/null |
-                 sed -n 's/^ii *//p' ;;
+                 sed -n 's/^.i. *//p' ;;
         dnf|microdnf|zypper) rpm -qa --qf '%{NAME}\n' 'nginx*' ;;
         apk) apk info 2>/dev/null ;;
     esac | grep -E '^nginx(-module-.+)?$' | tr '\n' ' ' | sed 's/ $//'
 }
 
-# The command that moves the installed nginx packages to the stable branch.
+# The commands that move the installed nginx packages to the stable branch.
 # Package managers don't downgrade on their own when the repository changes.
 downgrade_command() {
     _pkgs=$(installed_packages)
+    _sudo=${sudo:+$sudo }
     case $pkg in
-        apt) printf 'apt-get install --allow-downgrades'
-             for _p in $_pkgs; do printf ' %s/%s' "$_p" "$version"; done ;;
-        dnf|microdnf) printf '%s distro-sync %s' "$pkg" "$_pkgs" ;;
-        zypper) printf 'zypper install --oldpackage --from nginx-stable %s' "$_pkgs" ;;
-        apk) printf 'apk upgrade --available %s' "$_pkgs" ;;
+        apt)
+            # A held package (first status letter h) has to be unheld first.
+            _held=$(dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'nginx*' 2>/dev/null |
+                sed -n 's/^hi. *//p' | grep -E '^nginx(-module-.+)?$' | tr '\n' ' ' | sed 's/ $//')
+            if [ -n "$_held" ]; then
+                printf '%sapt-mark unhold %s\n    ' "$_sudo" "$_held"
+            fi
+            printf '%sapt-get install --allow-downgrades' "$_sudo"
+            for _p in $_pkgs; do printf ' %s/%s' "$_p" "$version"; done
+            ;;
+        dnf|microdnf) printf '%s%s distro-sync %s' "$_sudo" "$pkg" "$_pkgs" ;;
+        zypper) printf '%szypper install --oldpackage --from nginx-stable %s' "$_sudo" "$_pkgs" ;;
+        apk) printf '%sapk upgrade --available %s' "$_sudo" "$_pkgs" ;;
     esac
 }
 
@@ -624,7 +641,9 @@ finish() {
 
     # Check the binary the package installed, not whatever comes first in PATH.
     [ -x "$NGINX_BIN" ] || die "the packages installed, but $NGINX_BIN wasn't found."
-    _installed=$("$NGINX_BIN" -v 2>&1 | sed 's/^nginx version: //')
+    _installed=$("$NGINX_BIN" -v 2>&1) || die "the packages installed, but $NGINX_BIN doesn't run:
+$_installed"
+    _installed=${_installed#nginx version: }
     from_nginx_org || die "$_installed is installed, but not from nginx.org.
 The package manager chose another repository's nginx package. Check the
 output above for download errors, and that nginx.org has packages for
@@ -639,9 +658,10 @@ The stable repository is set up, but the package manager won't downgrade
 nginx on its own. Check that your configuration doesn't use features newer
 than stable, then run:
 
-    ${sudo:+$sudo }$(downgrade_command)
+    $(downgrade_command)
 
-Or stay on mainline by running this script again without --stable."
+If a hold or lock keeps nginx on its version, remove it first. Or stay on
+mainline by running this script again without --stable."
     fi
 
     step "Installed $_installed"
