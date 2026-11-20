@@ -159,12 +159,26 @@ fetch() {
         die "couldn't download $1"
 }
 
+# Where every nginx.org package installs the binary.
+NGINX_BIN=/usr/sbin/nginx
+
+# Any nginx already on the system, packaged or not, for the pre-install warning.
 find_nginx() {
-    if has nginx; then
+    if [ -x "$NGINX_BIN" ]; then
+        echo "$NGINX_BIN"
+    elif has nginx; then
         command -v nginx
-    elif [ -x /usr/sbin/nginx ]; then
-        echo /usr/sbin/nginx
     fi
+}
+
+# The architecture packages are installed for. On a 64-bit kernel, uname -m
+# says x86_64 even inside a 32-bit userspace that nginx.org doesn't build for.
+native_arch() {
+    case $os in
+        debian|ubuntu) has dpkg && dpkg --print-architecture ;;
+        alpine) has apk && apk --print-arch ;;
+        *) has rpm && rpm --eval '%{_arch}' ;;
+    esac || uname -m
 }
 
 # --- Steps -------------------------------------------------------------------
@@ -209,12 +223,7 @@ detect_os() {
     . /etc/os-release
     os_name=${PRETTY_NAME:-${ID:-unknown}}
     version_id=${VERSION_ID:-}
-
-    case $(uname -m) in
-        x86_64|amd64) arch=x86_64 ;;
-        aarch64|arm64) arch=aarch64 ;;
-        *) arch=$(uname -m); unsupported ;;
-    esac
+    arch=$(uname -m)
 
     # Amazon Linux lists rhel in ID_LIKE, so it has to match first.
     case " ${ID:-} ${ID_LIKE:-} " in
@@ -232,6 +241,13 @@ detect_os() {
             os=alpine version=$(echo "$version_id" | cut -d. -f1,2) supported=$SUPPORTED_ALPINE ;;
         *)
             unsupported ;;
+    esac
+
+    arch=$(native_arch)
+    case $arch in
+        x86_64|amd64) arch=x86_64 ;;
+        aarch64|arm64) arch=aarch64 ;;
+        *) unsupported ;;
     esac
 
     contains "$version" "$supported" || unsupported
@@ -361,10 +377,15 @@ show_plan() {
         printf '\nDynamic modules ship as separate packages. Add any of\n%s\nwith --module NAME.\n' \
             "$MODULES"
     fi
-    if [ -n "$nginx_bin" ]; then
+    if [ "$nginx_bin" = "$NGINX_BIN" ]; then
         echo
         warn "$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //') is already installed at $nginx_bin.
 The nginx.org packages will replace or upgrade it. Back up /etc/nginx first."
+    elif [ -n "$nginx_bin" ]; then
+        echo
+        warn "$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //') is already installed at $nginx_bin.
+The nginx.org packages install $NGINX_BIN and leave it in place, but it
+comes first in your PATH. Run $NGINX_BIN to use the packaged nginx."
     fi
 }
 
@@ -528,7 +549,12 @@ install_packages() {
     step "Installing $packages"
     case $pkg in
         apt)
-            apt_get update
+            # apt-get update exits 0 when an index fails to download. If the
+            # nginx.org one did, the install would quietly use the distro's
+            # nginx, so stop instead.
+            apt_get -o APT::Update::Error-Mode=any update ||
+                die "apt couldn't download every package index. Check the errors above.
+nginx.org is set up as a repository, but nothing was installed from it."
             # Keep any existing configuration files rather than prompting.
             apt_get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
                 install $packages
@@ -562,15 +588,47 @@ downgrade_command() {
     esac
 }
 
+# Did the installed nginx package come from nginx.org? On RPM systems, check
+# the key the package was signed with. apt and apk have already checked the
+# signature against the pinned key, so check the packager, which also tells
+# nginx.org packages apart from distro ones.
+from_nginx_org() {
+    case $pkg in
+        apt)
+            [ "$(dpkg-query -W -f '${Maintainer}' nginx 2>/dev/null)" = \
+                "NGINX Packaging <nginx-packaging@f5.com>" ]
+            ;;
+        dnf|microdnf|zypper)
+            # A key ID is the last 16 hex digits of the key's fingerprint.
+            _keyid=$(LC_ALL=C rpm -q --qf '%{SIGPGP:pgpsig}\n' nginx 2>/dev/null |
+                sed -n 's/.*Key ID \([0-9a-fA-F]\{16\}\).*/\1/p' | tr 'a-f' 'A-F')
+            for _fpr in $PGP_FINGERPRINTS; do
+                if [ -n "$_keyid" ] && [ "${_fpr#????????????????????????}" = "$_keyid" ]; then
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+        apk)
+            sed -n '/^P:nginx$/,/^$/p' /lib/apk/db/installed 2>/dev/null |
+                grep -q '^m:NGINX Packaging <nginx-packaging@f5\.com>$'
+            ;;
+    esac
+}
+
 finish() {
     if [ "$dry_run" = 1 ]; then
         step "Dry run finished. Nothing was changed."
         return
     fi
 
-    nginx_bin=$(find_nginx)
-    [ -n "$nginx_bin" ] || die "the packages installed, but the nginx binary wasn't found."
-    _installed=$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //')
+    # Check the binary the package installed, not whatever comes first in PATH.
+    [ -x "$NGINX_BIN" ] || die "the packages installed, but $NGINX_BIN wasn't found."
+    _installed=$("$NGINX_BIN" -v 2>&1 | sed 's/^nginx version: //')
+    from_nginx_org || die "$_installed is installed, but not from nginx.org.
+The package manager chose another repository's nginx package. Check the
+output above for download errors, and that nginx.org has packages for
+$os_name on $arch."
 
     # Stable releases have an even minor version, mainline an odd one. An odd
     # one after a stable install means a newer mainline build was kept.
@@ -593,7 +651,7 @@ Or stay on mainline by running this script again without --stable."
     elif has rc-service; then
         _start="${sudo:+$sudo }rc-update add nginx && ${sudo:+$sudo }rc-service nginx start"
     else
-        _start="${sudo:+$sudo }nginx"
+        _start="${sudo:+$sudo }$NGINX_BIN"
     fi
     field "Start nginx" "$_start"
     field "Configuration" "/etc/nginx/nginx.conf and /etc/nginx/conf.d/"

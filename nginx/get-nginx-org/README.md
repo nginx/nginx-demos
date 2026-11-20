@@ -15,12 +15,13 @@ Installing NGINX Open Source from the nginx.org packages means following the [Li
 
 ## What the installer does
 
-1. Detects the OS and architecture from `/etc/os-release` and `uname -m`, and stops on anything nginx.org doesn't package for.
+1. Detects the OS from `/etc/os-release` and the architecture from the package manager (`dpkg`, `rpm`, or `apk`), and stops on anything nginx.org doesn't package for. It doesn't rely on `uname -m`, which reports `x86_64` inside a 32-bit userspace on a 64-bit kernel.
 2. Prints the repository, signing keys, packages, and files it will change, then waits 10 seconds with a warning about running scripts piped from `curl`.
 3. Installs the prerequisites it's missing: `curl`, `gpg` (or `openssl` on Alpine), and CA certificates.
 4. Downloads the nginx signing key and stops unless every key in it matches a fingerprint pinned in the script. On Alpine, it checks the RSA key's SHA-256, which covers both the modulus and the exponent.
 5. Adds the nginx.org repository for the chosen branch, the same way the Linux packages page does.
-6. Installs `nginx` and any requested dynamic modules.
+6. Installs `nginx` and any requested dynamic modules. On Debian and Ubuntu, it stops if any package index fails to download, since `apt-get update` otherwise succeeds and the install would quietly use the distro's nginx.
+7. Checks that the installed `nginx` package came from nginx.org: on RPM systems by the key that signed it, and on apt and apk systems (which have already checked the signature) by its packager. It checks the package's own `/usr/sbin/nginx`, not whichever `nginx` comes first in `PATH`.
 
 The script is POSIX `sh`, so it runs on Alpine and other systems without `bash`. All of its code runs from a `main` function called inside a `{ ... }` block on the last line. If the download is cut short anywhere, including partway through that line, the shell fails to parse the script and runs nothing.
 
