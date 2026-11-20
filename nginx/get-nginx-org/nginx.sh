@@ -142,7 +142,8 @@ run() {
     fi
 }
 
-# write_file DEST: install stdin as DEST, mode 644, owned by root.
+# write_file DEST: install stdin as DEST, owned by root. A file that already
+# exists keeps its mode, since it may hold credentials; a new one gets 644.
 write_file() {
     _src="$tmp_dir/$(basename "$1")"
     cat >"$_src"
@@ -150,7 +151,18 @@ write_file() {
         say "  + write $1:"
         sed 's/^/      /' "$_src"
     else
-        run install -m 644 "$_src" "$1"
+        _mode=$($sudo stat -c %a "$1" 2>/dev/null) || _mode=644
+        run install -m "$_mode" "$_src" "$1"
+    fi
+}
+
+# read_file FILE: print FILE as root, or stop if it can't be read. A dry run
+# reads it without root.
+read_file() {
+    if [ "$dry_run" = 1 ]; then
+        cat "$1" 2>/dev/null || true
+    else
+        $sudo cat "$1" || die "couldn't read $1. Nothing in it was changed."
     fi
 }
 
@@ -542,7 +554,10 @@ add_repository() {
             ;;
         apk)
             run install -m 644 "$key_file" /etc/apk/keys/nginx_signing.rsa.pub
-            { grep -v '^@nginx https://nginx.org/packages/' /etc/apk/repositories || true
+            # Read the file as root and stop if that fails, so a failed read
+            # can't replace the system's repositories with only this one.
+            _repos=$(read_file /etc/apk/repositories)
+            { printf '%s\n' "$_repos" | grep -v '^@nginx https://nginx.org/packages/' || true
               echo "@nginx $repo_url"; } |
                 write_file /etc/apk/repositories
             ;;
