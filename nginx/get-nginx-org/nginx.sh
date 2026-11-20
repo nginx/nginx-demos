@@ -25,8 +25,8 @@
 #   5. Adds the nginx.org repository for the chosen branch.
 #   6. Installs nginx and any requested dynamic modules.
 #
-# All the work happens in main(), called on the last line, so a download cut
-# short runs nothing.
+# All the work happens in main(), called inside a { } block on the last line,
+# so a download cut short anywhere runs nothing.
 
 set -eu
 
@@ -61,18 +61,11 @@ PGP_FINGERPRINTS="
 9E9BE90EACBCDE69FE9B204CBCDCD8A38D88A2B3
 "
 
-# Alpine uses a separate RSA key. This is the modulus nginx.org asks you to
-# check by hand at https://nginx.org/en/linux_packages.html#Alpine
+# Alpine uses a separate RSA key, the one with the modulus nginx.org asks you
+# to check by hand at https://nginx.org/en/linux_packages.html#Alpine. This is
+# the SHA-256 of its DER encoding, which covers the modulus and the exponent.
 RSA_KEY_URL="$NGINX_ORG/keys/nginx_signing.rsa.pub"
-RSA_MODULUS="\
-FE14F60A1AB88619FECDAB029F582F37701574D6069B8155909996CC705CDE5B\
-E84CB20C475BA8A2983D11B1F67DA046DF2423C6D0245267BA69AB9A4A6A662C\
-DBE109F10DB2B0E1471F0A46AC0D82F33C8D02CE084319D96486C44E0712C05B\
-43BA7D178AA3F03D9832B97566F4F01B2D945B7C1CE6F3047FDD25B282A64104\
-B7509394C47C347E127CBF335455478C4294408E345F54041D9E8C5748D4B0F8\
-E403DB3F686C37FA62141C94D6DEF22B682917246DF7B5B31879FD315E7F4CBE\
-C09913CCE2972BDC969C9AD0A7C5778267C9CBA9E7684AE1C5BA1C320E79406E\
-EF08D7A3B95D1ADFCE1AC744914CD499C88869B3662EB306F1F422D7F25FAB6D"
+RSA_KEY_SHA256="03833138bf6288dcb545f7a154af24f5c63b94931fef6b078cd8061204a44327"
 
 # --- Output ------------------------------------------------------------------
 
@@ -347,7 +340,7 @@ show_plan() {
     field "Repository" "$repo_url"
     field "Signing key" "$key_url"
     if [ "$os" = alpine ]; then
-        field "" "used only if its RSA modulus matches the pinned one"
+        field "" "used only if its SHA-256 matches the pinned one"
     else
         field "" "used only if every key in it is one of:"
         for _fpr in $PGP_FINGERPRINTS; do
@@ -454,10 +447,11 @@ verify_rsa_key() {
     # Re-encode, so only the key itself ends up in /etc/apk/keys.
     openssl pkey -pubin -in "$tmp_dir/download.pub" -out "$key_file" 2>/dev/null ||
         die "$RSA_KEY_URL isn't a public key."
-    _modulus=$(openssl rsa -pubin -noout -modulus -in "$key_file" 2>/dev/null) || true
-    [ "$_modulus" = "Modulus=$RSA_MODULUS" ] || die "$RSA_KEY_URL doesn't match the pinned nginx signing key.
+    _sha256=$(openssl pkey -pubin -in "$key_file" -outform DER 2>/dev/null |
+        openssl dgst -sha256 2>/dev/null | sed 's/^.*= *//') || true
+    [ "$_sha256" = "$RSA_KEY_SHA256" ] || die "$RSA_KEY_URL doesn't match the pinned nginx signing key.
 Nothing was installed from nginx.org. Check $PACKAGES_DOC#Alpine"
-    say "  ${green}ok${reset}  RSA modulus matches"
+    say "  ${green}ok${reset}  SHA-256 $RSA_KEY_SHA256"
 }
 
 verify_signing_key() {
@@ -545,6 +539,29 @@ install_packages() {
     esac
 }
 
+# The nginx packages installed now, for downgrade_command.
+installed_packages() {
+    case $pkg in
+        apt) dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'nginx*' 2>/dev/null |
+                 sed -n 's/^ii *//p' ;;
+        dnf|microdnf|zypper) rpm -qa --qf '%{NAME}\n' 'nginx*' ;;
+        apk) apk info 2>/dev/null ;;
+    esac | grep -E '^nginx(-module-.+)?$' | tr '\n' ' ' | sed 's/ $//'
+}
+
+# The command that moves the installed nginx packages to the stable branch.
+# Package managers don't downgrade on their own when the repository changes.
+downgrade_command() {
+    _pkgs=$(installed_packages)
+    case $pkg in
+        apt) printf 'apt-get install --allow-downgrades'
+             for _p in $_pkgs; do printf ' %s/%s' "$_p" "$version"; done ;;
+        dnf|microdnf) printf '%s distro-sync %s' "$pkg" "$_pkgs" ;;
+        zypper) printf 'zypper install --oldpackage --from nginx-stable %s' "$_pkgs" ;;
+        apk) printf 'apk upgrade --available %s' "$_pkgs" ;;
+    esac
+}
+
 finish() {
     if [ "$dry_run" = 1 ]; then
         step "Dry run finished. Nothing was changed."
@@ -553,7 +570,23 @@ finish() {
 
     nginx_bin=$(find_nginx)
     [ -n "$nginx_bin" ] || die "the packages installed, but the nginx binary wasn't found."
-    step "Installed $("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //')"
+    _installed=$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //')
+
+    # Stable releases have an even minor version, mainline an odd one. An odd
+    # one after a stable install means a newer mainline build was kept.
+    _minor=$(echo "$_installed" | sed -n 's|^nginx/[0-9]*\.\([0-9]*\)\..*|\1|p')
+    if [ "$channel" = stable ] && [ -n "$_minor" ] && [ $((_minor % 2)) = 1 ]; then
+        die "$_installed from the mainline branch is still installed.
+The stable repository is set up, but the package manager won't downgrade
+nginx on its own. Check that your configuration doesn't use features newer
+than stable, then run:
+
+    ${sudo:+$sudo }$(downgrade_command)
+
+Or stay on mainline by running this script again without --stable."
+    fi
+
+    step "Installed $_installed"
 
     if [ -d /run/systemd/system ]; then
         _start="${sudo:+$sudo }systemctl enable --now nginx"
@@ -588,4 +621,4 @@ main() {
     finish
 }
 
-main "$@"
+{ main "$@"; exit; }

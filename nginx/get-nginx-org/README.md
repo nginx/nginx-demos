@@ -18,11 +18,11 @@ Installing NGINX Open Source from the nginx.org packages means following the [Li
 1. Detects the OS and architecture from `/etc/os-release` and `uname -m`, and stops on anything nginx.org doesn't package for.
 2. Prints the repository, signing keys, packages, and files it will change, then waits 10 seconds with a warning about running scripts piped from `curl`.
 3. Installs the prerequisites it's missing: `curl`, `gpg` (or `openssl` on Alpine), and CA certificates.
-4. Downloads the nginx signing key and stops unless every key in it matches a fingerprint pinned in the script. On Alpine, it checks the RSA key's modulus.
+4. Downloads the nginx signing key and stops unless every key in it matches a fingerprint pinned in the script. On Alpine, it checks the RSA key's SHA-256, which covers both the modulus and the exponent.
 5. Adds the nginx.org repository for the chosen branch, the same way the Linux packages page does.
 6. Installs `nginx` and any requested dynamic modules.
 
-The script is POSIX `sh`, so it runs on Alpine and other systems without `bash`. All of its code runs from a `main` function called on the last line, so a download that's cut short runs nothing.
+The script is POSIX `sh`, so it runs on Alpine and other systems without `bash`. All of its code runs from a `main` function called inside a `{ ... }` block on the last line. If the download is cut short anywhere, including partway through that line, the shell fails to parse the script and runs nothing.
 
 ## Usage
 
@@ -42,6 +42,13 @@ curl -fsSL https://get.nginx.org/nginx | sh -s -- --stable --module njs
 |`-h`, `--help`|Show the options and supported systems|
 
 The script runs as root, or uses `sudo` or `doas` if it isn't.
+
+Running the script again with `--stable` on a host with mainline installed switches the repository to stable, but package managers don't downgrade on their own. Rather than downgrade nginx unattended, which can break a configuration that uses mainline features, the script stops with an error and prints the command for that system, for example:
+
+```sh
+apt-get install --allow-downgrades nginx/noble nginx-module-njs/noble
+dnf distro-sync nginx nginx-module-njs
+```
 
 To read the script before running it:
 
@@ -70,7 +77,7 @@ nginx.org lists SLES 15 SP6, but its current SLES 15 packages need OpenSSL 3.2 a
 ## Maintenance
 
 * **New distribution versions:** add them to the `SUPPORTED_*` lists at the top of [`nginx.sh`](nginx.sh) and to the tables in this README and [`index.txt`](index.txt).
-* **New signing keys:** if nginx.org adds a key to `nginx_signing.key`, the script stops with the new fingerprint until it's added to `PGP_FINGERPRINTS`. Check the new key against the [Linux packages](https://nginx.org/en/linux_packages.html) page and the signatures of the existing keys before adding it.
+* **New signing keys:** if nginx.org adds a key to `nginx_signing.key`, the script stops with the new fingerprint until it's added to `PGP_FINGERPRINTS`. Check the new key against the [Linux packages](https://nginx.org/en/linux_packages.html) page and the signatures of the existing keys before adding it. If the Alpine key changes, check its modulus against that page, then set `RSA_KEY_SHA256` to the output of `openssl pkey -pubin -in nginx_signing.rsa.pub -outform DER | openssl dgst -sha256`.
 * **New dynamic modules:** add them to `MODULES`.
 
 ## Testing
