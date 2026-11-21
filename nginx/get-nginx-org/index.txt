@@ -1,0 +1,95 @@
+get.nginx.org - one-line installers for NGINX Open Source
+
+BEFORE YOU PASTE
+
+  These scripts run as root and change your system. Each one adds a
+  package repository and its signing keys, then installs packages. The
+  repository and the keys stay on the system afterwards.
+
+  Piping a download into a shell runs it unread. Read a script before you
+  run it: see "Review first" below.
+
+  The scripts are provided "as is", without warranty of any kind. You use
+  them at your own risk. See LICENSE at the end of this page.
+
+INSTALLERS
+
+  nginx    https://get.nginx.org/nginx
+           NGINX Open Source, from the nginx.org package repositories
+
+NGINX
+
+  Install the mainline branch:
+
+  curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx | sh
+
+  Install the stable branch:
+
+  curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx | sh -s -- --stable
+
+  Install with dynamic modules:
+
+  curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx | sh -s -- --module njs --module otel
+
+  Show the plan and the commands, change nothing:
+
+  curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx | sh -s -- --dry-run
+
+  Review first, then run the copy you read:
+
+  curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx -o install-nginx.sh
+  less install-nginx.sh
+  sh install-nginx.sh
+
+  Dockerfile or CI job: don't pipe from the network on every build. Keep
+  a copy you have read, check its SHA-256, and skip the pause:
+
+  echo "HASH  install-nginx.sh" | sha256sum -c - && sh install-nginx.sh --yes
+
+  Replace HASH with the first word printed by: sha256sum install-nginx.sh
+
+  Options, after "sh -s --" or after the file name:
+
+    --stable        stable branch (the default is mainline)
+    --module NAME   also install the nginx-module-NAME package
+                    NAME: acme geoip image-filter njs otel perl xslt
+                    repeat the option for more modules
+    --dry-run       show the plan and the commands, change nothing
+    --yes           skip the 10-second pause
+    --help          all options, supported systems, and how to undo
+
+  Good to know:
+
+    - Run it as root, or as a user who can use sudo.
+      Pipe into sh, not into sudo sh.
+    - Keep --proto '=https'. It makes curl refuse plain HTTP.
+    - The script shows its plan, then waits 10 seconds before it changes
+      anything. Press Ctrl+C to cancel.
+    - An nginx that is already installed is replaced or upgraded.
+      Back up /etc/nginx first.
+    - When it is done, the script prints how to start nginx.
+
+  Supported systems, on x86_64 and aarch64:
+
+    RHEL and derivatives   8, 9, 10
+    Debian                 12, 13
+    Ubuntu                 22.04, 24.04, 26.04
+    SLES                   15 SP7 or later (x86_64 only), 16
+    Alpine                 3.21, 3.22, 3.23, 3.24
+    Amazon Linux           2023
+
+  Manual installation steps: https://nginx.org/en/linux_packages.html
+
+LICENSE
+
+  Copyright (C) 2026 F5, Inc.
+  Copyright (C) 2026 Nginx, Inc.
+
+  The installers are open source. They are released under the same
+  2-clause BSD-like license as nginx: https://nginx.org/LICENSE
+
+  They are provided "as is". To the extent the law allows, the copyright
+  holders and contributors are not liable for any damage that comes from
+  their use. The license has the exact terms.
+
+Updated 2026-11-20
