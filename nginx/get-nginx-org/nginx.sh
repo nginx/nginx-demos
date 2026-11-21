@@ -37,9 +37,16 @@ PAUSE=10
 
 # Distributions and versions nginx.org builds packages for, from
 # https://nginx.org/en/linux_packages.html#distributions. All of them are
-# x86_64 and aarch64, except SLES 15, which is x86_64 only. nginx.org lists
-# SLES 15 SP6, but its packages need OpenSSL 3.2 and SP6 ships 3.1, so this
-# script needs SP7 or later.
+# x86_64 and aarch64, except SLES 15, which is x86_64 only.
+#
+# SLES 15: nginx.org lists "15 SP6+". This script needs SP7 or later, because
+# the nginx.org packages need OpenSSL 3.2 and SP6 ships 3.1. That rule is this
+# script's own and isn't on nginx.org, so test it again when the packages
+# change. openSUSE Leap 15 ended at 15.6, so only Leap 16 passes.
+#
+# LISTS_CHECKED is the date these lists last matched nginx.org. Change it
+# whenever you change a list.
+LISTS_CHECKED="2026-11-20"
 SUPPORTED_RHEL="8 9 10"
 SUPPORTED_DEBIAN="bookworm trixie"
 SUPPORTED_UBUNTU="jammy noble resolute"
@@ -91,7 +98,7 @@ supported_systems() {
         "RHEL and derivatives" "$SUPPORTED_RHEL" \
         "Debian" "$SUPPORTED_DEBIAN" \
         "Ubuntu" "$SUPPORTED_UBUNTU" \
-        "SLES, openSUSE Leap" "$SUPPORTED_SLES (15 needs SP7 or later, x86_64 only)" \
+        "SLES, openSUSE Leap" "$SUPPORTED_SLES (SLES 15: SP7 or later, x86_64 only; Leap: 16)" \
         "Alpine" "$SUPPORTED_ALPINE" \
         "Amazon Linux" "$SUPPORTED_AMZN"
 }
@@ -108,9 +115,11 @@ Options:
   --mainline      Install the mainline branch (default)
   --stable        Install the stable branch
   --module NAME   Also install the nginx-module-NAME package. Repeat for more
-                  modules. Available: $MODULES
+                  modules. --module=NAME works too.
+                  Available: $MODULES
   -n, --dry-run   Show the plan and the commands without changing anything
-  -y, --yes       Don't pause for $PAUSE seconds before making changes
+  -y, --yes       Don't pause for $PAUSE seconds before making changes. Use it
+                  in a Dockerfile or CI job, where nobody can press Ctrl+C
   -h, --help      Show this help
 
 Supported systems (x86_64 and aarch64):
@@ -132,11 +141,28 @@ contains() {
     return 1
 }
 
-# Run a command as root, or only print it in a dry run. Package managers get
-# /dev/null as stdin so they can't swallow the rest of a piped script.
+# Shell-quote one word for display, so a printed command can be copied and
+# run. Words made only of safe characters are printed as they are.
+quoted() {
+    case $1 in
+        ''|*[!A-Za-z0-9_./:=@%+,-]*)
+            printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")" ;;
+        *)
+            printf '%s' "$1" ;;
+    esac
+}
+
+# Run a command as root, or only print it in a dry run. Commands get /dev/null
+# as stdin so a package manager can't stop and wait for an answer. It isn't
+# there to protect a piped script: the shell has read the whole script before
+# main runs.
 run() {
     if [ "$dry_run" = 1 ]; then
-        say "  + ${sudo:+$sudo }$*"
+        _line="  +${sudo:+ $sudo}"
+        for _arg in "$@"; do
+            _line="$_line $(quoted "$_arg")"
+        done
+        say "$_line"
     else
         $sudo "$@" </dev/null
     fi
@@ -166,13 +192,23 @@ read_file() {
     fi
 }
 
+# fetch URL FILE. A failed download stops the script. In a dry run it warns
+# and returns 1 instead, so the caller can skip its step and the dry run can
+# still show the remaining commands.
 fetch() {
-    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$2" "$1" ||
-        die "couldn't download $1"
+    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 \
+        --connect-timeout 15 --max-time 120 -o "$2" "$1" && return 0
+    [ "$dry_run" = 1 ] || die "couldn't download $1"
+    warn "couldn't download $1"
+    return 1
 }
 
 # Where every nginx.org package installs the binary.
 NGINX_BIN=/usr/sbin/nginx
+
+# The maintainer field of every nginx.org deb and apk package. from_nginx_org
+# uses it to tell them apart from a distribution's own nginx packages.
+NGINX_MAINTAINER="NGINX Packaging <nginx-packaging@f5.com>"
 
 # Any nginx already on the system, packaged or not, for the pre-install warning.
 find_nginx() {
@@ -223,10 +259,12 @@ add_module() {
 }
 
 unsupported() {
-    die "$os_name on $arch isn't supported by the nginx.org packages.
-Supported systems:
+    die "$os_name on $arch isn't on this script's list of systems that
+nginx.org builds packages for. The list was checked on $LISTS_CHECKED:
 $(supported_systems)
-See $PACKAGES_DOC"
+If $PACKAGES_DOC lists your system,
+this copy of the script is out of date. Get the current one from
+$SCRIPT_URL"
 }
 
 detect_os() {
@@ -237,7 +275,11 @@ detect_os() {
     version_id=${VERSION_ID:-}
     arch=$(uname -m)
 
-    # Amazon Linux lists rhel in ID_LIKE, so it has to match first.
+    # ID_LIKE names a distribution's parents, so the order matters:
+    #   - ubuntu before debian: Ubuntu and its derivatives also list debian.
+    #   - amzn before rhel: Amazon Linux 2 lists "centos rhel fedora". Matched
+    #     as amzn, it fails the version check instead of passing for RHEL 2.
+    # The SLES patterns have no leading *, so they match ID only, not ID_LIKE.
     case " ${ID:-} ${ID_LIKE:-} " in
         *" ubuntu "*)
             os=ubuntu version=${UBUNTU_CODENAME:-${VERSION_CODENAME:-}} supported=$SUPPORTED_UBUNTU ;;
@@ -328,7 +370,10 @@ plan() {
             ;;
         sles)
             pkg=zypper gpg_pkg=gpg2 ca_bundle=/etc/ssl/ca-bundle.pem
+            # zypper expands $releasever_major itself, to 15 or 16. The plan
+            # shows the expanded URL; add_repository passes zypper the variable.
             repo_url="$pkgs_url/sles/$version"
+            zypper_url="$pkgs_url/sles/\$releasever_major"
             changes="rpm database (signing keys)
 /etc/zypp/repos.d/nginx-$channel.repo (repository, added with zypper)"
             ;;
@@ -391,8 +436,15 @@ show_plan() {
     fi
     if [ "$nginx_bin" = "$NGINX_BIN" ]; then
         echo
-        warn "$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //') is already installed at $nginx_bin.
-The nginx.org packages will replace or upgrade it. Back up /etc/nginx first."
+        _old=$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //')
+        if from_nginx_org; then
+            say "$_old from nginx.org is already installed at $nginx_bin.
+This run upgrades it if the $channel branch has a newer version."
+        else
+            warn "$_old is already installed at $nginx_bin.
+The nginx.org packages will replace it. Back up /etc/nginx first: a
+configuration written for another build of nginx may not load in this one."
+        fi
     elif [ -n "$nginx_bin" ]; then
         echo
         warn "$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //') is already installed at $nginx_bin.
@@ -458,7 +510,7 @@ install_prerequisites() {
 }
 
 verify_pgp_key() {
-    fetch "$PGP_KEY_URL" "$key_file"
+    fetch "$PGP_KEY_URL" "$key_file" || return 0  # dry run only, see fetch
     mkdir -m 700 "$tmp_dir/gnupg"
     # gpg can print some keys and still fail on the rest of the file, so check
     # its exit status before trusting what it printed.
@@ -477,10 +529,11 @@ Nothing was installed from nginx.org. Check $PACKAGES_DOC, and get a newer
 copy of this script if nginx has added a signing key."
         say "  ${green}ok${reset}  $(spaced "$_fpr")"
     done
+    key_verified=1
 }
 
 verify_rsa_key() {
-    fetch "$RSA_KEY_URL" "$tmp_dir/download.pub"
+    fetch "$RSA_KEY_URL" "$tmp_dir/download.pub" || return 0  # dry run only, see fetch
     # Re-encode, so only the key itself ends up in /etc/apk/keys.
     openssl pkey -pubin -in "$tmp_dir/download.pub" -out "$key_file" 2>/dev/null ||
         die "$RSA_KEY_URL isn't a public key."
@@ -489,6 +542,7 @@ verify_rsa_key() {
     [ "$_sha256" = "$RSA_KEY_SHA256" ] || die "$RSA_KEY_URL doesn't match the pinned nginx signing key.
 Nothing was installed from nginx.org. Check $PACKAGES_DOC#Alpine"
     say "  ${green}ok${reset}  SHA-256 $RSA_KEY_SHA256"
+    key_verified=1
 }
 
 verify_signing_key() {
@@ -501,6 +555,9 @@ verify_signing_key() {
         verify_rsa_key
     else
         verify_pgp_key
+    fi
+    if [ "$key_verified" != 1 ]; then
+        say "Skipped: the dry run couldn't download the key."
     fi
 }
 
@@ -517,16 +574,24 @@ yum_repo() {
     # shellcheck disable=SC2016 # $basearch is a yum variable
     printf '[nginx-%s]\nname=nginx %s repo\nbaseurl=%s/%s/$basearch/\n' "$1" "$1" "$_url" "$rpm_path"
     printf 'gpgcheck=1\nenabled=%s\ngpgkey=file://%s\nmodule_hotfixes=true\n' "$_enabled" "$rpm_key"
-    if [ "$os" = amzn ]; then
-        echo "priority=9"
-    fi
+    # Prefer nginx.org over the distribution's nginx, whatever its epoch or
+    # version. dnf's default priority is 99 and the lower number wins. nginx.org
+    # documents this line for Amazon Linux only. It is written for RHEL and its
+    # derivatives too, because in 2024 the EL9 nginx moved to epoch 2 and dnf
+    # then chose it over the nginx.org packages.
+    echo "priority=9"
 }
 
 add_repository() {
     step "Adding the nginx.org $channel repository"
+    # Outside a dry run, verify_signing_key has either verified the key or
+    # stopped the script. This line guards against a later change breaking that.
+    [ "$dry_run" = 1 ] || [ "$key_verified" = 1 ] ||
+        die "internal error: the signing key wasn't verified."
     case $pkg in
         apt)
-            if [ -s "$key_file" ]; then
+            # In a dry run the key may not have been downloaded.
+            if [ "$key_verified" = 1 ]; then
                 gpg --homedir "$tmp_dir/gnupg" --batch --yes --dearmor \
                     -o "$tmp_dir/nginx-archive-keyring.gpg" "$key_file"
             fi
@@ -550,7 +615,7 @@ add_repository() {
                 fi
             done
             run zypper --non-interactive addrepo --gpgcheck --type yum --refresh --check \
-                "$pkgs_url/sles/\$releasever_major" "nginx-$channel"
+                "$zypper_url" "nginx-$channel"
             ;;
         apk)
             run install -m 644 "$key_file" /etc/apk/keys/nginx_signing.rsa.pub
@@ -573,6 +638,8 @@ install_packages() {
             # nginx, so stop instead.
             apt_get -o APT::Update::Error-Mode=any update ||
                 die "apt couldn't download every package index. Check the errors above.
+Any failing repository stops the install here, including one that has
+nothing to do with nginx. Fix or disable it, then run this script again.
 nginx.org is set up as a repository, but nothing was installed from it."
             # Keep any existing configuration files rather than prompting.
             apt_get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
@@ -627,23 +694,29 @@ downgrade_command() {
 from_nginx_org() {
     case $pkg in
         apt)
-            [ "$(dpkg-query -W -f '${Maintainer}' nginx 2>/dev/null)" = \
-                "NGINX Packaging <nginx-packaging@f5.com>" ]
+            [ "$(dpkg-query -W -f '${Maintainer}' nginx 2>/dev/null)" = "$NGINX_MAINTAINER" ]
             ;;
         dnf|microdnf|zypper)
+            # A package can carry two RSA signatures. RSAHEADER signs the
+            # header, and current rpmsign always adds it. SIGPGP signs the
+            # header and payload, and rpmsign only adds it when a package needs
+            # it. Ask for both: a missing one prints "(none)" and is dropped by
+            # the sed below.
             # A key ID is the last 16 hex digits of the key's fingerprint.
-            _keyid=$(LC_ALL=C rpm -q --qf '%{SIGPGP:pgpsig}\n' nginx 2>/dev/null |
+            _keyids=$(LC_ALL=C rpm -q --qf '%{RSAHEADER:pgpsig}\n%{SIGPGP:pgpsig}\n' nginx 2>/dev/null |
                 sed -n 's/.*Key ID \([0-9a-fA-F]\{16\}\).*/\1/p' | tr 'a-f' 'A-F')
-            for _fpr in $PGP_FINGERPRINTS; do
-                if [ -n "$_keyid" ] && [ "${_fpr#????????????????????????}" = "$_keyid" ]; then
-                    return 0
-                fi
+            for _keyid in $_keyids; do
+                for _fpr in $PGP_FINGERPRINTS; do
+                    if [ "${_fpr#????????????????????????}" = "$_keyid" ]; then
+                        return 0
+                    fi
+                done
             done
             return 1
             ;;
         apk)
             sed -n '/^P:nginx$/,/^$/p' /lib/apk/db/installed 2>/dev/null |
-                grep -q '^m:NGINX Packaging <nginx-packaging@f5\.com>$'
+                grep -qxF "m:$NGINX_MAINTAINER"
             ;;
     esac
 }
@@ -660,9 +733,12 @@ finish() {
 $_installed"
     _installed=${_installed#nginx version: }
     from_nginx_org || die "$_installed is installed, but not from nginx.org.
-The package manager chose another repository's nginx package. Check the
-output above for download errors, and that nginx.org has packages for
-$os_name on $arch."
+The package manager kept or chose another repository's nginx package. Check
+the output above for download errors, and that nginx.org has packages for
+$os_name on $arch.
+If the other package has a higher version or epoch, the package manager won't
+replace it on its own: back up /etc/nginx, remove that package, then run this
+script again."
 
     # Stable releases have an even minor version, mainline an odd one. An odd
     # one after a stable install means a newer mainline build was kept.
@@ -679,6 +755,13 @@ If a hold or lock keeps nginx on its version, remove it first. Or stay on
 mainline by running this script again without --stable."
     fi
 
+    # A configuration written for another build of nginx, such as a
+    # distribution's with its own modules and file layout, may not load in
+    # this one. nginx -t needs root to read keys and open the log files.
+    step "Testing the configuration"
+    _config_ok=1
+    run "$NGINX_BIN" -t || _config_ok=0
+
     step "Installed $_installed"
 
     if [ -d /run/systemd/system ]; then
@@ -691,10 +774,18 @@ mainline by running this script again without --stable."
     field "Start nginx" "$_start"
     field "Configuration" "/etc/nginx/nginx.conf and /etc/nginx/conf.d/"
     field "Documentation" "https://nginx.org/en/docs/"
+
+    if [ "$_config_ok" = 0 ]; then
+        echo
+        warn "nginx is installed, but 'nginx -t' rejected the configuration in
+/etc/nginx. See its messages above. nginx won't start or reload until the
+configuration is fixed. An nginx that is already running keeps its old
+configuration until then."
+    fi
 }
 
 main() {
-    channel=mainline modules="" dry_run=0 assume_yes=0
+    channel=mainline modules="" dry_run=0 assume_yes=0 key_verified=0
     setup_colors
     parse_args "$@"
     detect_os
@@ -702,7 +793,8 @@ main() {
 
     tmp_dir=$(mktemp -d)
     trap 'rm -rf "$tmp_dir"' EXIT
-    trap 'exit 130' INT TERM
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
 
     plan
     show_plan
