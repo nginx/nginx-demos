@@ -223,22 +223,31 @@ run() {
 
 # write_file DEST: install stdin as DEST, owned by root. A file that already
 # exists keeps its mode, since it may hold credentials; a new one gets 644.
+# If DEST is a symlink, its target is written and the link is kept: the
+# mode of a link itself is always 777, so replacing it with a regular file
+# of that mode would let any user edit a file the package manager reads as
+# root.
 write_file() {
     _src="$tmp_dir/$(basename "$1")"
     cat >"$_src"
+    _dest=$1
+    if $sudo test -L "$1"; then
+        _dest=$($sudo readlink -f "$1") ||
+            die "$1 is a symlink that doesn't resolve. Nothing in it was changed."
+    fi
     # Keep the first copy of a file this script replaces. It may hold settings
     # the new file drops, such as a repository file that points at a company
     # mirror. apt, dnf and apk don't read files that end in .bak. Check as
     # root, since the user may not be able to see into the directory.
-    if $sudo test -e "$1" && ! $sudo test -e "$1.bak"; then
-        run cp -p "$1" "$1.bak"
+    if $sudo test -e "$_dest" && ! $sudo test -e "$_dest.bak"; then
+        run cp -p "$_dest" "$_dest.bak"
     fi
     if [ "$dry_run" = 1 ]; then
-        say "  + write $1:"
+        say "  + write $_dest:"
         sed 's/^/      /' "$_src"
     else
-        _mode=$($sudo stat -c %a "$1" 2>/dev/null) || _mode=644
-        run install -m "$_mode" "$_src" "$1"
+        _mode=$($sudo stat -c %a "$_dest" 2>/dev/null) || _mode=644
+        run install -m "$_mode" "$_src" "$_dest"
     fi
 }
 
@@ -762,8 +771,10 @@ add_repository() {
             ;;
         zypper)
             run rpm --import "$key_file"
+            # Check as root: the user may not be able to read the repository
+            # files, and would miss one that addrepo then finds.
             for _repo in nginx-stable nginx-mainline; do
-                if zypper --non-interactive repos "$_repo" >/dev/null 2>&1; then
+                if $sudo zypper --non-interactive repos "$_repo" >/dev/null 2>&1; then
                     run zypper --non-interactive removerepo "$_repo"
                 fi
             done
@@ -775,11 +786,73 @@ add_repository() {
             # Read the file as root and stop if that fails, so a failed read
             # can't replace the system's repositories with only this one.
             _repos=$(read_file /etc/apk/repositories)
-            { printf '%s\n' "$_repos" | grep -v '^@nginx https://nginx.org/packages/' || true
+            # Drop every earlier nginx.org entry, over http or https and with
+            # any spacing, so only the chosen branch is left.
+            { printf '%s\n' "$_repos" |
+                  grep -v -E '^[[:space:]]*@nginx[[:space:]]+https?://nginx\.org/packages/' || true
               echo "@nginx $repo_url"; } |
                 write_file /etc/apk/repositories
             ;;
     esac
+}
+
+# Enabled nginx.org package sources other than the one this script wrote,
+# one per line with the file it is in. With one for the other branch still
+# enabled, the package manager can keep or pick that branch, and a switch
+# with --stable can't take effect. apt lists only fetched sources, so call
+# this after apt-get update.
+other_nginx_sources() {
+    case $pkg in
+        apt)
+            # shellcheck disable=SC2016 # $(SITE) and the rest are apt's fields
+            LC_ALL=C apt-get indextargets --format '$(SITE) $(RELEASE) $(SOURCESENTRY)' 2>/dev/null |
+                grep -E '^https?://nginx\.org/packages/' | sort -u |
+                grep -v " /etc/apt/sources.list.d/nginx.list:" || true
+            ;;
+        dnf|microdnf)
+            # Enabled sections with an nginx.org URL, in any .repo file but
+            # the one this script writes. Each section is collected in the
+            # hold space as its header, plus a URL= line for an nginx.org
+            # URL and an enabled=0 line if it's off. A section with no
+            # enabled line is enabled.
+            for _f in /etc/yum.repos.d/*.repo; do
+                [ "$_f" = /etc/yum.repos.d/nginx.repo ] && continue
+                $sudo cat "$_f" 2>/dev/null | sed -n '
+                    /^\[/ { x; /\nURL=/ { /\nenabled=0/!p; }; s/.*//; x; h; d; }
+                    /^[[:space:]]*\(baseurl\|mirrorlist\|metalink\)[[:space:]]*=.*nginx\.org\/packages\// { s/.*/URL=/; H; }
+                    /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*0/ { s/.*/enabled=0/; H; }
+                    $ { x; /\nURL=/ { /\nenabled=0/!p; }; }' |
+                    sed -n "s|^\[\([^]]*\)\].*|\1 in $_f|p"
+            done
+            ;;
+        zypper)
+            # The columns are # | Alias | Name | Enabled | GPG Check |
+            # Refresh | URI. sed, not awk, because SUSE's minimal images
+            # don't have awk.
+            LC_ALL=C zypper -q --no-refresh repos -u -E 2>/dev/null |
+                sed -n 's/^[^|]*|[[:space:]]*\([^|[:space:]]*\)[[:space:]]*|.*|[[:space:]]*\(https\{0,1\}:\/\/nginx\.org\/packages\/[^[:space:]]*\).*/\1 \2/p' |
+                grep -v -E "^nginx-$channel " || true
+            ;;
+        apk)
+            for _f in /etc/apk/repositories.d/*.list; do
+                $sudo test -e "$_f" || continue
+                $sudo cat "$_f" 2>/dev/null |
+                    grep -E '^[^#]*https?://nginx\.org/packages/' | sed "s|\$| in $_f|" || true
+            done
+            ;;
+    esac
+}
+
+# Stop if another enabled source serves nginx.org packages.
+check_other_sources() {
+    [ "$dry_run" = 1 ] && return
+    _others=$(other_nginx_sources)
+    [ -z "$_others" ] && return
+    die "another nginx.org package source is enabled:
+$(printf '%s\n' "$_others" | sed 's/^/    /')
+With it, the package manager can install the other branch, or keep it after
+a switch. Disable or remove it, then run this script again. Nothing was
+installed from nginx.org."
 }
 
 install_packages() {
@@ -794,15 +867,22 @@ install_packages() {
 Any failing repository stops the install here, including one that has
 nothing to do with nginx. Fix or disable it, then run this script again.
 nginx.org is set up as a repository, but nothing was installed from it."
+            check_other_sources
             # Keep any existing configuration files rather than prompting.
             apt_get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
                 install $packages
             ;;
-        dnf|microdnf) run "$pkg" install -y $packages ;;
-        zypper) run zypper --non-interactive install --from "nginx-$channel" $packages ;;
+        dnf|microdnf)
+            check_other_sources
+            run "$pkg" install -y $packages ;;
+        zypper)
+            check_other_sources
+            run zypper --non-interactive install --from "nginx-$channel" $packages ;;
         # Without --upgrade, apk add keeps an installed version that still
         # satisfies the request, unlike the other package managers' install.
-        apk) run apk add --no-cache --upgrade $packages ;;
+        apk)
+            check_other_sources
+            run apk add --no-cache --upgrade $packages ;;
     esac
 }
 
@@ -874,6 +954,52 @@ from_nginx_org() {
     esac
 }
 
+# Is the exact nginx version that is installed one that the nginx.org
+# repository offers? from_nginx_org reads fields of the installed package,
+# which a package built elsewhere can copy, and a package manager keeps an
+# installed version that is newer than any it is offered. This asks the
+# package manager, which checked the repository's signature against the
+# pinned keys, so only a version nginx.org published passes. Call it once
+# the nginx.org repository is set up. The queries run as root, since the
+# repository files and caches may not be readable by the user.
+offered_by_nginx_org() {
+    case $pkg in
+        apt)
+            # The lines under the installed version (***) name the sources
+            # that offer it.
+            $sudo env LC_ALL=C apt-cache policy nginx 2>/dev/null |
+                sed -n '/^ \*\*\* /,/^     [^ ]/p' | sed '1d;$d' |
+                grep -q -E ' https?://nginx\.org/packages/'
+            ;;
+        # Either of this script's repositories: finish checks the branch
+        # separately, so a mainline build left after --stable gets the
+        # downgrade advice rather than this error.
+        dnf)
+            $sudo env LC_ALL=C dnf -q repoquery --qf '%{repoid}' "$(rpm -q nginx)" 2>/dev/null |
+                grep -q -x -E 'nginx-(stable|mainline)'
+            ;;
+        microdnf)
+            # microdnf repoquery prints the package only if a repository offers
+            # it. includepkgs=nginx* and priority=9 keep other repositories'
+            # nginx out of the way, and other_nginx_sources has stopped the
+            # script if another nginx.org one is enabled.
+            [ -n "$($sudo microdnf repoquery "$(rpm -q nginx)" 2>/dev/null)" ]
+            ;;
+        zypper)
+            _v=$(rpm -q --qf '%{VERSION}-%{RELEASE}' nginx 2>/dev/null)
+            $sudo env LC_ALL=C zypper -q --no-refresh search -s -x -t package nginx 2>/dev/null |
+                grep -F "| $_v " | grep -q -E '\| nginx-(stable|mainline)[[:space:]]*$'
+            ;;
+        apk)
+            # --no-cache fetches the indexes, which apk 2 doesn't keep after an
+            # install with --no-cache.
+            _v=$($sudo apk info -e -v nginx 2>/dev/null | sed 's/^nginx-//')
+            [ -n "$_v" ] && $sudo apk --no-cache policy nginx 2>/dev/null |
+                sed -n "/^  $_v:\$/,/^  [^ ]/p" | grep -q -E '^    @nginx https?://nginx\.org/packages/'
+            ;;
+    esac
+}
+
 finish() {
     if [ "$dry_run" = 1 ]; then
         step "Dry run finished. Nothing was changed."
@@ -907,6 +1033,13 @@ than stable, then run:
 If a hold or lock keeps nginx on its version, remove it first. Or stay on
 mainline by running this script again without --stable."
     fi
+
+    # The checks above read the installed package's own fields. This one
+    # confirms that nginx.org published this exact version.
+    offered_by_nginx_org || die "$_installed is installed and looks like an nginx.org package, but
+the nginx.org repository doesn't offer this version. It may be a local
+rebuild, or a newer version that the package manager kept. Back up
+/etc/nginx, remove the nginx package, then run this script again."
 
     # A configuration written for another build of nginx, such as a
     # distribution's with its own modules and file layout, may not load in
