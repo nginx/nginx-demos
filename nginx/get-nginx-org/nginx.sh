@@ -4,16 +4,33 @@
 # get.nginx.org/nginx: install NGINX Open Source from the official nginx.org
 # package repositories.
 #
-#   curl -fsSL https://get.nginx.org/nginx | sh
-#   curl -fsSL https://get.nginx.org/nginx | sh -s -- --stable --module njs
+#   curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx | sh
+#   curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx |
+#       sh -s -- --stable --module njs
 #
 # Piping a download into a shell runs whatever the server sends, unread. To
 # review the script first:
 #
-#   curl -fsSL https://get.nginx.org/nginx -o install-nginx.sh
+#   curl --proto '=https' --tlsv1.2 -fsSL https://get.nginx.org/nginx -o install-nginx.sh
 #   less install-nginx.sh
 #   sh install-nginx.sh --dry-run
 #   sh install-nginx.sh
+#
+# Security notes:
+#   - Keep --proto '=https' and the full https:// URL. Without them curl can
+#     fetch the script over plain HTTP, and anyone on the network path can
+#     then run commands as root on your machine.
+#   - Pipe into sh, not sudo sh. The script uses sudo itself for the commands
+#     that need root. Under sudo sh everything runs as root, including the
+#     parsing of the downloaded key.
+#   - In a Dockerfile or CI job, don't pipe from the network on every build.
+#     Save a copy you have read, record its SHA-256, check it on every build,
+#     and run that copy with --yes.
+#   - The nginx.org repository and its signing keys stay on the system after
+#     the install, and later upgrades take nginx from nginx.org. --help lists
+#     what to remove to undo that.
+#   - Nothing in this script can prove that the script itself is genuine. The
+#     pinned fingerprints below only protect the key download.
 #
 # What it does, following https://nginx.org/en/linux_packages.html:
 #   1. Detects the OS and architecture.
@@ -31,6 +48,9 @@
 set -eu
 
 SCRIPT_URL="https://get.nginx.org/nginx"
+# The download command shown to users. --proto '=https' makes curl refuse
+# plain HTTP, also when a redirect points to it.
+SAFE_CURL="curl --proto '=https' --tlsv1.2 -fsSL"
 NGINX_ORG="https://nginx.org"
 PACKAGES_DOC="$NGINX_ORG/en/linux_packages.html"
 PAUSE=10
@@ -87,6 +107,17 @@ setup_colors() {
 say()   { printf '%s\n' "$*"; }
 step()  { printf '\n%s==> %s%s\n' "$bold" "$*" "$reset"; }
 field() { printf '  %-15s %s\n' "$1" "$2"; }
+# field_lines LABEL TEXT: field for a text of several lines. The label is
+# printed on the first line only.
+field_lines() {
+    printf '%s\n' "$2" | {
+        _label=$1
+        while IFS= read -r _line; do
+            field "$_label" "$_line"
+            _label=""
+        done
+    }
+}
 warn()  { printf '%sWarning:%s %s\n' "$yellow" "$reset" "$*" >&2; }
 die()   { printf '%sError:%s %s\n' "$red" "$reset" "$*" >&2; exit 1; }
 
@@ -108,7 +139,7 @@ usage() {
 Install NGINX Open Source from the nginx.org package repositories.
 
 Usage:
-  curl -fsSL $SCRIPT_URL | sh -s -- [options]
+  $SAFE_CURL $SCRIPT_URL | sh -s -- [options]
   sh install-nginx.sh [options]
 
 Options:
@@ -117,13 +148,35 @@ Options:
   --module NAME   Also install the nginx-module-NAME package. Repeat for more
                   modules. --module=NAME works too.
                   Available: $MODULES
-  -n, --dry-run   Show the plan and the commands without changing anything
+  -n, --dry-run   Show the plan and the commands without changing anything.
+                  It still reads /etc/os-release, downloads the signing key,
+                  checks it with gpg or openssl, and queries the package
+                  manager
   -y, --yes       Don't pause for $PAUSE seconds before making changes. Use it
                   in a Dockerfile or CI job, where nobody can press Ctrl+C
   -h, --help      Show this help
 
 Supported systems (x86_64 and aarch64):
 $(supported_systems)
+
+Security:
+  Pipe into sh, not sudo sh: the script uses sudo itself where it needs root.
+  The nginx.org repository and its signing keys stay after the install, and
+  later system upgrades take nginx from nginx.org.
+
+To undo that, as root (this leaves the nginx packages installed):
+  Debian, Ubuntu  rm /etc/apt/sources.list.d/nginx.list
+                     /etc/apt/preferences.d/99nginx
+                     /usr/share/keyrings/nginx-archive-keyring.gpg
+  RHEL, Amazon    rm /etc/yum.repos.d/nginx.repo
+                     /etc/pki/rpm-gpg/RPM-GPG-KEY-nginx
+  SLES            zypper removerepo nginx-stable nginx-mainline
+  Alpine          delete the @nginx line in /etc/apk/repositories, then
+                  rm /etc/apk/keys/nginx_signing.rsa.pub
+  RHEL, Amazon and SLES also keep the keys in the rpm database. List them:
+                  rpm -q gpg-pubkey --qf '%{NAME}-%{VERSION}-%{RELEASE} %{SUMMARY}\n'
+                  then run rpm -e on each gpg-pubkey line that names nginx.
+  A file this script replaced is kept, the first time, as FILE.bak.
 
 Manual installation steps: $PACKAGES_DOC
 EOF
@@ -173,6 +226,13 @@ run() {
 write_file() {
     _src="$tmp_dir/$(basename "$1")"
     cat >"$_src"
+    # Keep the first copy of a file this script replaces. It may hold settings
+    # the new file drops, such as a repository file that points at a company
+    # mirror. apt, dnf and apk don't read files that end in .bak. Check as
+    # root, since the user may not be able to see into the directory.
+    if $sudo test -e "$1" && ! $sudo test -e "$1.bak"; then
+        run cp -p "$1" "$1.bak"
+    fi
     if [ "$dry_run" = 1 ]; then
         say "  + write $1:"
         sed 's/^/      /' "$_src"
@@ -195,8 +255,11 @@ read_file() {
 # fetch URL FILE. A failed download stops the script. In a dry run it warns
 # and returns 1 instead, so the caller can skip its step and the dry run can
 # still show the remaining commands.
+#
+# -q has to come first. It makes curl skip ~/.curlrc, where an "insecure" or
+# "proxy" line would weaken this download without the user noticing.
 fetch() {
-    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 \
+    curl -q -fsSL --proto '=https' --tlsv1.2 --retry 3 \
         --connect-timeout 15 --max-time 120 -o "$2" "$1" && return 0
     [ "$dry_run" = 1 ] || die "couldn't download $1"
     warn "couldn't download $1"
@@ -269,6 +332,10 @@ $SCRIPT_URL"
 
 detect_os() {
     [ -r /etc/os-release ] || die "can't detect the OS: /etc/os-release is missing."
+    # /etc/os-release doesn't have to set every field. Clear the ones used
+    # below, so a field it leaves out can't be filled in from the environment
+    # and steer the script to another distribution's repository.
+    unset ID ID_LIKE VERSION_ID VERSION_CODENAME UBUNTU_CODENAME PRETTY_NAME
     # shellcheck disable=SC1091
     . /etc/os-release
     os_name=${PRETTY_NAME:-${ID:-unknown}}
@@ -350,7 +417,9 @@ plan() {
             repo_url="$pkgs_url/$os $version nginx"
             changes="$keyring (signing keys)
 /etc/apt/sources.list.d/nginx.list (repository)
-/etc/apt/preferences.d/99nginx (prefers nginx.org packages)"
+/etc/apt/preferences.d/99nginx (takes nginx packages from nginx.org, and nothing else)"
+            trust="apt accepts the keys for the nginx.org repository only,
+and takes only nginx packages from it."
             ;;
         rhel|amzn)
             # Minimal images, such as UBI minimal, only have microdnf.
@@ -367,6 +436,8 @@ plan() {
             repo_url="$pkgs_url/$rpm_path/$arch/"
             changes="$rpm_key (signing keys, also imported into rpm)
 /etc/yum.repos.d/nginx.repo (repository)"
+            trust="$pkg takes only nginx packages from this repository.
+rpm accepts the keys for packages from any repository."
             ;;
         sles)
             pkg=zypper gpg_pkg=gpg2 ca_bundle=/etc/ssl/ca-bundle.pem
@@ -376,6 +447,8 @@ plan() {
             zypper_url="$pkgs_url/sles/\$releasever_major"
             changes="rpm database (signing keys)
 /etc/zypp/repos.d/nginx-$channel.repo (repository, added with zypper)"
+            trust="This script doesn't limit the repository to nginx packages on zypper.
+rpm accepts the keys for packages from any repository."
             ;;
         alpine)
             pkg=apk ca_bundle=/etc/ssl/certs/ca-certificates.crt
@@ -386,6 +459,8 @@ plan() {
             packages=${packages% }
             changes="/etc/apk/keys/nginx_signing.rsa.pub (signing key)
 /etc/apk/repositories (adds the @nginx repository)"
+            trust="apk uses this repository only for packages asked for with @nginx,
+and for what they depend on. It accepts the key for any repository."
             ;;
     esac
 
@@ -419,15 +494,13 @@ show_plan() {
         for _fpr in $PGP_FINGERPRINTS; do
             field "" "  $(spaced "$_fpr")"
         done
+        field "" "revoked and expired keys are left out"
     fi
     field "Prerequisites" "${prereqs:-none needed}"
-    printf '%s\n' "$changes" | {
-        _label="Changes"
-        while IFS= read -r _line; do
-            field "$_label" "$_line"
-            _label=""
-        done
-    }
+    field_lines "Changes" "$changes"
+    field "" "a file that already exists is kept, the first time, as FILE.bak"
+    field_lines "Trust" "$trust"
+    field "" "This stays after the install. --help lists how to undo it."
     field "Runs as" "$run_as"
 
     if [ -z "$modules" ]; then
@@ -447,8 +520,10 @@ configuration written for another build of nginx may not load in this one."
         fi
     elif [ -n "$nginx_bin" ]; then
         echo
-        warn "$("$nginx_bin" -v 2>&1 | sed 's/^nginx version: //') is already installed at $nginx_bin.
-The nginx.org packages install $NGINX_BIN and leave it in place, but it
+        # Don't run it to ask for its version. It is whatever comes first in
+        # PATH, and this script may be running as root.
+        warn "another nginx is installed at $nginx_bin.
+The nginx.org packages install $NGINX_BIN and leave that one in place, but it
 comes first in your PATH. Run $NGINX_BIN to use the packaged nginx."
     fi
 }
@@ -469,7 +544,7 @@ nginx.org signing keys and repository, then installs packages. If you piped
 it from curl into a shell without reading it, press Ctrl+C now and review
 it first:
 
-    curl -fsSL $SCRIPT_URL -o install-nginx.sh
+    $SAFE_CURL $SCRIPT_URL -o install-nginx.sh
     less install-nginx.sh
     sh install-nginx.sh
 
@@ -509,25 +584,92 @@ install_prerequisites() {
     esac
 }
 
+# gpg with a private, empty home directory: no user keyring, no user options.
+tmp_gpg() { gpg --homedir "$tmp_dir/gnupg" --batch "$@"; }
+
+# key_fingerprints FILE: the fingerprint of every primary key in FILE, one per
+# line. It is field 10 of the fpr line after each pub line. sed, not awk,
+# because SUSE's minimal images don't have awk.
+key_fingerprints() {
+    tmp_gpg --with-colons --show-keys "$1" 2>/dev/null |
+        sed -n '/^pub:/{n;s/^fpr:\{9\}\([0-9A-F]*\):.*/\1/p;}'
+}
+
+# Check the downloaded key file, then write clean copies of the accepted keys:
+#   $key_file                              ASCII armor, for rpm --import
+#   $tmp_dir/nginx-archive-keyring.gpg     binary keyring, for apt
+# The download itself is never installed.
 verify_pgp_key() {
-    fetch "$PGP_KEY_URL" "$key_file" || return 0  # dry run only, see fetch
+    _download=$tmp_dir/download.key
+    fetch "$PGP_KEY_URL" "$_download" || return 0  # dry run only, see fetch
     mkdir -m 700 "$tmp_dir/gnupg"
     # gpg can print some keys and still fail on the rest of the file, so check
     # its exit status before trusting what it printed.
-    _keys=$(gpg --homedir "$tmp_dir/gnupg" --batch --with-colons --show-keys "$key_file" 2>/dev/null) ||
+    _keys=$(tmp_gpg --with-colons --show-keys "$_download" 2>/dev/null) ||
         die "gpg couldn't read $PGP_KEY_URL.
 Nothing was installed from nginx.org."
-    # The fingerprint is field 10 of the fpr line after each pub line. sed, not
-    # awk, because SUSE's minimal images don't have awk.
-    _found=$(printf '%s\n' "$_keys" | sed -n '/^pub:/{n;s/^fpr:\{9\}\([0-9A-F]*\):.*/\1/p;}')
+    # One FINGERPRINT:VALIDITY word per key. The validity is field 2 of the
+    # pub line. The fingerprint is field 10 of the fpr line after it.
+    _found=$(printf '%s\n' "$_keys" |
+        sed -n '/^pub:/{h;n;G;s/^fpr:\{9\}\([0-9A-F]*\):.*\npub:\([^:]*\):.*/\1:\2/p;}')
     [ -n "$_found" ] || die "$PGP_KEY_URL doesn't contain any PGP keys."
 
-    for _fpr in $_found; do
+    _good=""
+    for _key in $_found; do
+        _fpr=${_key%%:*}
         contains "$_fpr" "$PGP_FINGERPRINTS" || die "$PGP_KEY_URL contains a key this script doesn't know:
     $(spaced "$_fpr")
 Nothing was installed from nginx.org. Check $PACKAGES_DOC, and get a newer
 copy of this script if nginx has added a signing key."
-        say "  ${green}ok${reset}  $(spaced "$_fpr")"
+        # A pinned key that nginx has revoked, or that has expired, is left
+        # out and not trusted. The fingerprint alone doesn't show either, and
+        # older versions of rpm don't check for them. Packages signed with
+        # such a key then fail the package manager's signature check.
+        case ${_key#*:} in
+            r) _why=revoked ;;
+            e) _why=expired ;;
+            i) _why=invalid ;;
+            d) _why=disabled ;;
+            *) _why="" ;;
+        esac
+        if [ -n "$_why" ]; then
+            warn "left out $(spaced "$_fpr"): the key is $_why."
+        else
+            _good="${_good:+$_good }$_fpr"
+            say "  ${green}ok${reset}  $(spaced "$_fpr")"
+        fi
+    done
+    [ -n "$_good" ] || die "$PGP_KEY_URL has no key that is still valid.
+Nothing was installed from nginx.org."
+
+    # Write clean copies: import the file, then export only the accepted keys.
+    # gpg --show-keys doesn't list everything in a key file. A subkey without
+    # a valid binding signature, for one, passes the fingerprint check unseen,
+    # and some signature checkers have accepted such subkeys. An export from
+    # gpg's own keyring holds only what gpg has tied to the accepted keys.
+    # The import may complain about a key that was left out, so the checks
+    # that count come after the export.
+    tmp_gpg --quiet --import "$_download" >/dev/null 2>&1 || true
+    # One armor block per key. rpm imports each block of a file, but older
+    # versions may read only the first key inside a block.
+    : >"$key_file"
+    for _fpr in $_good; do
+        tmp_gpg --armor --export "$_fpr" >>"$key_file" 2>/dev/null ||
+            die "gpg couldn't export $(spaced "$_fpr")."
+    done
+    tmp_gpg --yes --output "$tmp_dir/nginx-archive-keyring.gpg" --export $_good 2>/dev/null ||
+        die "gpg couldn't export the accepted keys."
+    # Both copies must hold exactly the accepted keys.
+    for _file in "$key_file" "$tmp_dir/nginx-archive-keyring.gpg"; do
+        _clean=$(key_fingerprints "$_file" | tr '\n' ' ')
+        for _fpr in $_good; do
+            contains "$_fpr" "$_clean" ||
+                die "internal error: $(spaced "$_fpr") is missing from the cleaned key file."
+        done
+        for _fpr in $_clean; do
+            contains "$_fpr" "$_good" ||
+                die "internal error: the cleaned key file holds the unexpected key $(spaced "$_fpr")."
+        done
     done
     key_verified=1
 }
@@ -580,6 +722,10 @@ yum_repo() {
     # derivatives too, because in 2024 the EL9 nginx moved to epoch 2 and dnf
     # then chose it over the nginx.org packages.
     echo "priority=9"
+    # Take only nginx packages from this repository, so it can't replace
+    # unrelated system packages in a later upgrade. Every package nginx.org
+    # publishes here has a name that starts with nginx.
+    echo "includepkgs=nginx*"
 }
 
 add_repository() {
@@ -590,15 +736,22 @@ add_repository() {
         die "internal error: the signing key wasn't verified."
     case $pkg in
         apt)
-            # In a dry run the key may not have been downloaded.
-            if [ "$key_verified" = 1 ]; then
-                gpg --homedir "$tmp_dir/gnupg" --batch --yes --dearmor \
-                    -o "$tmp_dir/nginx-archive-keyring.gpg" "$key_file"
-            fi
+            # verify_pgp_key wrote this keyring. In a dry run it may be
+            # missing, because the key wasn't downloaded.
             run install -m 644 "$tmp_dir/nginx-archive-keyring.gpg" "$keyring"
             echo "deb [signed-by=$keyring] $repo_url" |
                 write_file /etc/apt/sources.list.d/nginx.list
-            printf 'Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n' |
+            # Two rules. nginx packages from nginx.org beat the distribution's.
+            # Every other package from nginx.org is never installed, so the
+            # repository can't replace unrelated system packages in a later
+            # upgrade. Both match the host name in the repository URL.
+            # nginx.org documents one rule, for all packages, with two Pin
+            # lines. apt uses only the last Pin line of a rule, so that rule
+            # really matched "release o=nginx": the Origin field of a Release
+            # file, which any repository can set.
+            printf '%s\n' \
+                'Package: nginx nginx-*' 'Pin: origin nginx.org' 'Pin-Priority: 900' '' \
+                'Package: *' 'Pin: origin nginx.org' 'Pin-Priority: -1' |
                 write_file /etc/apt/preferences.d/99nginx
             ;;
         dnf|microdnf)
@@ -784,6 +937,15 @@ configuration until then."
     fi
 }
 
+# shellcheck disable=SC2329 # called from the EXIT trap in main
+cleanup() {
+    # gpg may have started helper daemons for its private home directory.
+    if [ -d "$tmp_dir/gnupg" ] && has gpgconf; then
+        gpgconf --homedir "$tmp_dir/gnupg" --kill all >/dev/null 2>&1 || true
+    fi
+    rm -rf "$tmp_dir"
+}
+
 main() {
     channel=mainline modules="" dry_run=0 assume_yes=0 key_verified=0
     setup_colors
@@ -792,7 +954,7 @@ main() {
     check_privileges
 
     tmp_dir=$(mktemp -d)
-    trap 'rm -rf "$tmp_dir"' EXIT
+    trap cleanup EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
 
