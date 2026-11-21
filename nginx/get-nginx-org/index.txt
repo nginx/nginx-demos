@@ -20,7 +20,7 @@ get.nginx.org: one-line installers for NGINX Open Source
 
       Supports RHEL and derivatives 8-10, Debian 12-13, Ubuntu 22.04-26.04,
       SLES 15 SP7+ and 16, Alpine 3.21-3.24, and Amazon Linux 2023, on
-      x86_64 and aarch64.
+      x86_64 and aarch64. SLES 15 is x86_64 only.
 
 Piping a download into a shell runs it unread. To review it first:
 
