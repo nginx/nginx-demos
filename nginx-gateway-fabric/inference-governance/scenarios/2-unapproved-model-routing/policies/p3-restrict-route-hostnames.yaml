@@ -1,0 +1,61 @@
+# P3 ("Unapproved model routing"): tenant routes may only use hostnames the platform gave them.
+# The shared Gateway accepts routes from every namespace, and the Gateway API ranks a more specific
+# path above the older route across namespaces, so without this a tenant can attach a route to
+# another tenant's hostname with a longer path and take its traffic, past every other policy. The
+# allowed hostnames are a platform-owned ConfigMap (kyverno/hostname-allowlist) keyed by tenant
+# namespace; a `*` stands for one DNS label. A route with no hostnames matches every hostname on the
+# listener, so it's denied too. Only namespaces labeled tenant=platform are exempt; an unlabeled
+# namespace is a tenant. Matches HTTPRoutes only, the one route kind the tenant role can create
+# (setup/workloads/manifests/01-rbac.yaml). Cluster-scoped: it reads a ConfigMap in another
+# namespace.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: restrict-route-hostnames
+  annotations:
+    policies.kyverno.io/title: Restrict route hostnames
+    policies.kyverno.io/description: Tenant HTTPRoutes may only use hostnames on the tenant's hostname allowlist.
+spec:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [gateway.networking.k8s.io]
+      apiVersions: [v1]
+      operations: [CREATE, UPDATE]
+      resources: [httproutes]
+  variables:
+  - name: tenant
+    expression: object.metadata.namespace
+  - name: isPlatform
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'tenant']
+      .orValue('') == 'platform'
+  - name: hostnames
+    expression: object.spec.?hostnames.orValue([])
+  - name: allowed
+    expression: >-
+      resource.Get('v1', 'configmaps', 'kyverno', 'hostname-allowlist').?data[?variables.tenant]
+      .orValue('').split(',').map(s, s.trim()).filter(s, s != '')
+  # Each allowed entry as an anchored regex: dots are literal, `*` is one DNS label.
+  - name: patterns
+    expression: >-
+      variables.allowed.map(a, '^' + a.replace('.', '\\.').replace('*', '[a-z0-9-]+') + '$')
+  - name: denied
+    expression: >-
+      variables.hostnames.filter(h, !variables.patterns.exists(p, h.matches(p)))
+  validations:
+  - expression: variables.isPlatform || variables.hostnames.size() > 0
+    messageExpression: >-
+      variables.tenant + ' routes must name their hostnames: a route without them takes every
+      hostname on the gateway'
+    message: tenant routes must name their hostnames
+  - expression: variables.isPlatform || variables.denied.size() == 0
+    messageExpression: >-
+      (variables.allowed.size() == 0
+      ? 'no hostname allowlist entry for ' + variables.tenant
+      : variables.tenant + ' may not use ' + variables.denied.join(', '))
+      + ': ask the platform team to add it to your list'
+    message: this route uses a hostname the tenant doesn't own; ask the platform team

@@ -1,0 +1,43 @@
+# P11 (cleanup, no clip installs it): on a schedule, delete model servers in tenant namespaces that
+# nobody pays for. The cleanup scenario's background scan reports them (require-cost-center); this
+# removes them and frees the GPU. Same test as P4: a model-server workload, or its pods, with no
+# cost-center label. Platform namespaces are exempt; an unlabelled namespace is a tenant.
+#
+# Deleting is irreversible, so roll it out after the report: run P4 in Audit, read the
+# PolicyReports, tell the owners and give them time to add the label, then install this. It runs
+# hourly, so once it's installed an unlabelled model server lasts an hour at most.
+# Deployments, StatefulSets and Jobs only: their pods go with them (deletionPropagationPolicy).
+apiVersion: policies.kyverno.io/v1
+kind: DeletingPolicy
+metadata:
+  name: cleanup-unowned-gpu-workloads
+  annotations:
+    policies.kyverno.io/title: Clean up unowned GPU workloads
+    policies.kyverno.io/description: Deletes model-server workloads in tenant namespaces that have no cost-center label.
+spec:
+  schedule: "0 * * * *"   # hourly
+  deletionPropagationPolicy: Foreground
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [apps]
+      apiVersions: [v1]
+      resources: [deployments, statefulsets]
+    - apiGroups: [batch]
+      apiVersions: [v1]
+      resources: [jobs]
+  variables:
+  - name: podLabels
+    expression: object.spec.?template.?metadata.?labels.orValue({})
+  - name: isTenant
+    expression: >-
+      resource.Get('v1', 'namespaces', '', object.metadata.namespace).metadata.?labels[?'tenant']
+      .orValue('') != 'platform'
+  conditions:
+  - name: tenant-namespace
+    expression: variables.isTenant
+  - name: model-server
+    expression: variables.podLabels[?'inference.example.com/role'].orValue('') == 'model-server'
+  - name: unowned
+    expression: >-
+      object.metadata.?labels[?'cost-center'].orValue('') == '' ||
+      variables.podLabels[?'cost-center'].orValue('') == ''

@@ -1,0 +1,11 @@
+# The external fallback (fallback.yaml, applied by hand): an ExternalName Service and a route to it.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenario-manifests-keep-serving-p6
+policies: [../../policies/p7-inference-backends-only.yaml]
+resources: [../../fallback.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: Service, resources: [team-assistant/vendor-fallback], result: fail}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-fallback], result: fail}

@@ -1,0 +1,11 @@
+# The exact manifest the Unbudgeted GPU workloads clip applies: nothing in it names who pays.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenario-manifests-shadow-gpu-p3
+policies: [../../policies/p4-require-cost-center.yaml]
+resources: [../../shadow-70b.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+- {policy: require-cost-center, isValidatingPolicy: true, kind: InferencePool, resources: [team-assistant/shadow-70b], result: fail}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [team-assistant/shadow-70b], result: fail}

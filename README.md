@@ -38,6 +38,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 
 |Title|Description|Owner|
 |-----|-----------|-----|
+|[NGINX Gateway Fabric inference governance](nginx-gateway-fabric/inference-governance/)|Kyverno CEL policies that govern AI inference traffic on NGINX Gateway Fabric and the Gateway API Inference Extension: model access, GPU cost attribution and failure modes, with the KyvernoCon NA 2026 slides and recordings|@alessfg @ciarams87|
 |[NGINX Gateway Fabric traffic splitting](nginx-gateway-fabric/traffic-splitting/)|Simple overview of configuring NGINX Gateway Fabric to route traffic within Kubernetes|@sjberman|
 
 ### NGINX Ingress Controller (NIC)

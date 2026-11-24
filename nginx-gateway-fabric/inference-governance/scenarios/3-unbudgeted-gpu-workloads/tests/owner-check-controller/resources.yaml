@@ -1,0 +1,9 @@
+# The same Pod, made by the StatefulSet controller: reported at the StatefulSet, not again here.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: from-statefulset
+  namespace: team-assistant
+  labels: {inference.example.com/role: model-server, gpu.example.com/class: h100}
+  ownerReferences: [{apiVersion: apps/v1, kind: StatefulSet, name: anything, uid: 00000000-0000-0000-0000-0000000000c2, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}

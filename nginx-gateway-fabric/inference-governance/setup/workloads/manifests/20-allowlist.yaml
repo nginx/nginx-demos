@@ -1,0 +1,23 @@
+# Which InferencePools each tenant may route to, as <namespace>/<pool>. Read by P2.
+# Owned by the platform team (tenants can't edit the kyverno namespace).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-allowlist
+  namespace: kyverno
+data:
+  team-assistant: models/llama-8b
+  team-research: models/llama-8b, models/llama-70b, team-research/research-ft
+---
+# Which hostnames each tenant's routes may use on the shared Gateway. Read by P3. A `*` stands for
+# one DNS label, so `assistant-*.example` covers assistant-pro.example and assistant-v2.example.
+# Without this, any tenant could attach a route to another tenant's hostname with a more specific
+# path and take its traffic (the Gateway API ranks path specificity across namespaces).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hostname-allowlist
+  namespace: kyverno
+data:
+  team-assistant: assistant.example, assistant-*.example
+  team-research: research.example, research-*.example

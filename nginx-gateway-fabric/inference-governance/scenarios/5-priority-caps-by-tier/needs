@@ -1,0 +1,3 @@
+# Priority caps by tier raises the priority on the pool Unbudgeted GPU workloads deploys
+# (shadow-70b).
+3-unbudgeted-gpu-workloads
