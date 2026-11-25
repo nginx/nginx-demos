@@ -1,0 +1,18 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-route-hostnames
+policies: [../../policies/p3-restrict-route-hostnames.yaml]
+resources: [resources.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+- policy: restrict-route-hostnames
+  isValidatingPolicy: true
+  kind: HTTPRoute
+  resources: [own-hostname, own-wildcard, platform-any-host]
+  result: pass
+- policy: restrict-route-hostnames
+  isValidatingPolicy: true
+  kind: HTTPRoute
+  resources: [steal-assistant, no-hostnames, dot-lookalike, two-labels, no-allowlist]
+  result: fail

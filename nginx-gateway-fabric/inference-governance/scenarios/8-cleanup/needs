@@ -1,0 +1,5 @@
+# Cleanup reports what the main demo left behind before each policy existed.
+1-cross-namespace-model-sharing
+2-unapproved-model-routing
+3-unbudgeted-gpu-workloads
+4-fail-open-pools

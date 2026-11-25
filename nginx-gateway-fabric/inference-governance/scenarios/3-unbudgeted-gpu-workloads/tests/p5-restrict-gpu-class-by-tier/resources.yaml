@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: h100-standard, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: h100-premium, namespace: team-research}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: l4-standard, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: l4}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: h100-no-tier, namespace: team-unlabelled}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: h100-shared, namespace: models}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+# A bare Pod, no controller.
+apiVersion: v1
+kind: Pod
+metadata: {name: h100-pod, namespace: team-assistant, labels: {gpu.example.com/class: h100}}
+spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: h100-sts, namespace: team-assistant}
+spec:
+  serviceName: x
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+# No GPU label on the pods, but scheduled onto h100 nodes.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: h100-nodeselector, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b}}
+    spec: {nodeSelector: {gpu.example.com/class: h100}, containers: [{name: sim, image: sim}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: h100-job, namespace: team-assistant}
+spec:
+  template:
+    metadata: {labels: {gpu.example.com/class: h100}}
+    spec: {restartPolicy: Never, containers: [{name: sim, image: sim}]}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: l4-pod, namespace: team-assistant, labels: {gpu.example.com/class: l4}}
+spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: h100-from-deployment
+  namespace: team-assistant
+  labels: {gpu.example.com/class: h100}
+  ownerReferences: [{apiVersion: apps/v1, kind: ReplicaSet, name: owned-model-7d9f, uid: 00000000-0000-0000-0000-0000000000a4, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: h100-from-handmade-rs
+  namespace: team-assistant
+  labels: {gpu.example.com/class: h100}
+  ownerReferences: [{apiVersion: apps/v1, kind: ReplicaSet, name: handmade-rs, uid: 00000000-0000-0000-0000-0000000000a5, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: h100-from-deployment-rs
+  namespace: team-assistant
+  ownerReferences: [{apiVersion: apps/v1, kind: Deployment, name: h100-standard, uid: 00000000-0000-0000-0000-0000000000b2, controller: true}]
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata: {name: h100-own-rs, namespace: team-assistant}
+spec:
+  selector: {matchLabels: {a: b}}
+  template:
+    metadata: {labels: {a: b, gpu.example.com/class: h100}}
+    spec: {containers: [{name: sim, image: sim}]}

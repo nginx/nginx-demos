@@ -1,0 +1,11 @@
+# A tenant creates a bare Pod and writes a controller owner into it. ownerReferences are whatever
+# the creator writes, so at admission P4 and P5 trust them only when a controller made the request:
+# this one is checked like any bare Pod.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: forged-owner
+  namespace: team-assistant
+  labels: {inference.example.com/role: model-server, gpu.example.com/class: h100}
+  ownerReferences: [{apiVersion: apps/v1, kind: StatefulSet, name: anything, uid: 00000000-0000-0000-0000-0000000000c1, controller: true}]
+spec: {containers: [{name: sim, image: sim}]}

@@ -1,0 +1,26 @@
+# Everything `make up` installs must pass every policy, otherwise the platform fights itself
+# (and the cleanup scenario's PolicyReports would show false positives). The one place setup/
+# reads scenarios/: it needs their policies and the fake cluster. make test runs it; make up and
+# make reset don't. It sits four folders deep, like the scenarios' tests, so the CRD paths in
+# scenarios/_shared/cluster.yaml resolve from here too.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: baseline-check
+policies:
+- ../../../../scenarios/2-unapproved-model-routing/policies/p2-restrict-model-access.yaml
+- ../../../../scenarios/2-unapproved-model-routing/policies/p3-restrict-route-hostnames.yaml
+- ../../../../scenarios/3-unbudgeted-gpu-workloads/policies/p4-require-cost-center.yaml
+- ../../../../scenarios/3-unbudgeted-gpu-workloads/policies/p5-restrict-gpu-class-by-tier.yaml
+- ../../../../scenarios/4-fail-open-pools/policies/p6-deny-failopen-for-regulated.yaml
+- ../../../../scenarios/4-fail-open-pools/policies/p7-inference-backends-only.yaml
+resources:
+- ../../../workloads/manifests/30-routes.yaml
+- baseline-models.yaml
+clusterResources: [../../../../scenarios/_shared/cluster.yaml]
+results:
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant, team-research/research], result: pass}
+- {policy: restrict-route-hostnames, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant, team-research/research], result: pass}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant, team-research/research], result: pass}
+- {policy: require-cost-center, isValidatingPolicy: true, kind: Deployment, resources: [models/llama-8b, models/llama-70b, team-research/research-ft], result: pass}
+- {policy: restrict-gpu-class-by-tier, isValidatingPolicy: true, kind: Deployment, resources: [models/llama-70b, team-research/research-ft], result: pass}

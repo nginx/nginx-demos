@@ -1,0 +1,4 @@
+# The answer served by llama-8b and llama-70b. The simulator picks a random line, so there's one
+# line, matching chat.sh's default prompt ("How do I reset my password?"): a clip shows the same
+# answer every run, and which model answered is what changes.
+You can reset your password from Settings, then Security, then Reset password. A link arrives by email within a few minutes.

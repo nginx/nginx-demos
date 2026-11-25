@@ -1,0 +1,14 @@
+# The exact manifests this scenario's clips apply get the verdict the clip claims, so the YAML
+# can't drift from what's on screen without make test failing.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenario-manifests-borrow-a-model
+# P1 judges the grant, not the route, and has background scans off. The cleanup scenario reports the
+# route through Unapproved model routing's P2 instead, so this checks that.
+policies: [../../../2-unapproved-model-routing/policies/p2-restrict-model-access.yaml]
+resources: [../../assistant-research-ft.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+# assistant-pro points at team-research/research-ft, which isn't on team-assistant's allowlist.
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-pro], result: fail}

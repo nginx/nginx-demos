@@ -1,0 +1,15 @@
+# `make lint`. Matches the repo's style instead of yamllint's defaults: no leading `---`,
+# kubectl-style unindented lists, and one-line test result rows that read as tables.
+extends: default
+ignore: |
+  .cache/
+  scenarios/_shared/crds/
+  scenarios/3-unbudgeted-gpu-workloads/shadow-70b.yaml
+  setup/tests/policies/baseline-check/baseline-models.yaml
+  scenarios/3-unbudgeted-gpu-workloads/tests/scenario-manifests-p4/shadow-70b-deployment.yaml
+rules:
+  document-start: disable
+  indentation:
+    spaces: 2
+    indent-sequences: whatever
+  line-length: disable

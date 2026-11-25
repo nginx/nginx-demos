@@ -1,0 +1,16 @@
+# The exact manifests this scenario's clips apply get the verdict the clip claims, so the YAML
+# can't drift from what's on screen without make test failing.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenario-manifests-skip-the-gateway
+# The compliant route must pass the admission policies installed by the time this scenario runs
+# in the full demo, or make check would stop here.
+policies:
+- ../../../2-unapproved-model-routing/policies/p2-restrict-model-access.yaml
+- ../../../4-fail-open-pools/policies/p7-inference-backends-only.yaml
+resources: [../../assistant-v2.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+- {policy: restrict-model-access, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-v2], result: pass}
+- {policy: inference-backends-only, isValidatingPolicy: true, kind: HTTPRoute, resources: [team-assistant/assistant-v2], result: pass}

@@ -1,0 +1,12 @@
+# The exact manifests this scenario's clips apply get the verdict the clip claims, so the YAML
+# can't drift from what's on screen without make test failing.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: scenario-manifests-cut-the-line
+policies: [../../policies/p8-cap-objective-priority.yaml]
+resources: [../../objective.yaml]
+clusterResources: [../../../_shared/cluster.yaml]
+results:
+# Priority 100 in a standard-tier namespace.
+- {policy: cap-objective-priority, isValidatingPolicy: true, kind: InferenceObjective, resources: [team-assistant/assistant-vip], result: fail}

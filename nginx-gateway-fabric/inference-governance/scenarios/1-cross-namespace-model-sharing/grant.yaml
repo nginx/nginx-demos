@@ -1,0 +1,11 @@
+# team-research shares its fine-tuned model with team-assistant: a ReferenceGrant to the InferencePool.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: let-team-assistant-use-research-ft
+  namespace: team-research
+spec:
+  from:
+  - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: team-assistant}
+  to:
+  - {group: inference.networking.k8s.io, kind: InferencePool}
