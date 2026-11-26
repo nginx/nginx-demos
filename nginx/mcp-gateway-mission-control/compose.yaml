@@ -1,0 +1,80 @@
+# All published ports bind to 127.0.0.1 so the demo is not reachable from
+# shared networks (e.g. conference Wi-Fi). Set DEMO_BIND=0.0.0.0 in .env only
+# if you deliberately need access from another machine.
+# Host ports can be changed in .env (GATEWAY_PORT, UI_PORT, MCP_DIRECT_PORT,
+# GRAFANA_PORT, PROMETHEUS_PORT) if a default port is already in use.
+services:
+  mcp:
+    container_name: mcp-server
+    build: ./mcp-server
+    expose: ['3001']
+    ports: ['${DEMO_BIND:-127.0.0.1}:${MCP_DIRECT_PORT:-8001}:3001']
+    networks: [lab]
+  nginx:
+    container_name: nginx
+    # 1.31.8: includes fixes for the 1.31.7 security advisories (1.31.6 is affected).
+    image: nginx:1.31.8-alpine-otel@sha256:80f21d4f7c7b4ada6c600d693534d227dad3b007b47ef9a12f33177e28f3c081
+    ports: ['${DEMO_BIND:-127.0.0.1}:${GATEWAY_PORT:-8080}:8080']
+    tmpfs:
+      - /tmp/nginx:mode=1777
+    volumes:
+      # Repository config is read-only; the supervisor copies it into the
+      # container at start, so live edits never modify files in the repo.
+      - ./nginx/nginx.conf:/demo-source/nginx.conf:ro
+      - ./nginx/snippets:/etc/nginx/mcp:ro
+      - ./nginx/conf.d:/etc/nginx/demo-conf:ro
+      - ./njs:/etc/nginx/njs:ro
+      - nginx-control:/demo-control
+      - ./nginx/editor-supervisor.sh:/demo-editor-supervisor.sh:ro
+    command: ["/bin/sh", "/demo-editor-supervisor.sh"]
+    depends_on: [mcp]
+    networks: [lab]
+  ui:
+    container_name: mission-control
+    build: ./ui
+    ports: ['${DEMO_BIND:-127.0.0.1}:${UI_PORT:-3000}:3000']
+    environment:
+      DIRECT_MCP_URL: http://mcp:3001/mcp
+      MCP_URL: http://nginx:8080/mcp
+      GATEWAY_HEALTH_URL: http://nginx:8080/health
+      NGINX_EDITOR_TOKEN: ${NGINX_EDITOR_TOKEN:-}
+      # Host ports, so the UI's Grafana/Prometheus links point at the right place.
+      GRAFANA_PORT: ${GRAFANA_PORT:-3002}
+      PROMETHEUS_PORT: ${PROMETHEUS_PORT:-9090}
+    volumes:
+      - nginx-control:/demo-control
+    depends_on: [mcp, nginx]
+    networks: [lab]
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector-contrib:0.146.1
+    command: ['--config=/etc/otel/config.yaml', '--config=/etc/otel/edge.yaml']
+    volumes: ['./otel/collector.yaml:/etc/otel/config.yaml:ro', './otel/edge.yaml:/etc/otel/edge.yaml:ro']
+    # OTLP is only needed inside the compose network; not published.
+    expose: ['4317']
+    networks: [lab]
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v3.9.1
+    command: ['--config.file=/etc/prometheus/prometheus.yml']
+    volumes: ['./otel/prometheus.yml:/etc/prometheus/prometheus.yml:ro']
+    ports: ['${DEMO_BIND:-127.0.0.1}:${PROMETHEUS_PORT:-9090}:9090']
+    networks: [lab]
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:12.3.3
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      # Open straight onto the MCP dashboard.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/http/mission-mcp-unified.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/http:ro
+    ports: ['${DEMO_BIND:-127.0.0.1}:${GRAFANA_PORT:-3002}:3000']
+    depends_on: [prometheus]
+    networks: [lab]
+networks:
+  lab: {}
+volumes:
+  nginx-control: {}
