@@ -1,0 +1,77 @@
+# docker/Dockerfile.dev — pinned nginx built with ngx_http_trace_module.
+#
+# Reproducible dev/test/CI image (IMPLEMENTATION_PLAN.md §9.3). The nginx source
+# version is a build-arg so the same file drives the whole version matrix
+# (AC-13). Debug symbols + the module's required config flags are always on.
+# ASan is toggled via the SANITIZE build-arg for the test-asan target.
+#
+# Layers are ordered so the (slow) nginx source fetch + configure/compile is
+# cached on NGINX_VERSION and only the module recompiles on source changes.
+
+FROM debian:bookworm-slim
+
+ARG NGINX_VERSION=1.27.0
+ARG SANITIZE=
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Test::Nginx is a CPAN distribution (not a Debian package); install it via
+# cpanminus together with its IPC::Run dependency.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates curl \
+        libpcre2-dev zlib1g-dev libssl-dev \
+        gdb valgrind \
+        perl cpanminus \
+    && cpanm --notest IPC::Run Test::Nginx \
+    && rm -rf /var/lib/apt/lists/* /root/.cpanm
+
+WORKDIR /src
+
+# --- cached layer: fetch nginx source (rebuilt only when NGINX_VERSION changes)
+RUN curl -fL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
+        | tar -xz \
+    && ln -s "nginx-${NGINX_VERSION}" nginx
+
+# --- module sources (this is what usually changes)
+COPY config /src/ngx-trace/config
+COPY src    /src/ngx-trace/src
+
+WORKDIR /src/nginx
+
+# --with-compat        : stable module ABI / dynamic loading
+# --with-debug         : debug log + assertions during development
+# --with-http_v2_module: gRPC / HTTP/2 capture (later milestones)
+# stream + ssl + auth_request: fixtures used by the AC test suite
+RUN ./configure \
+        --prefix=/usr/local/nginx \
+        --with-compat \
+        --with-debug \
+        --with-http_v2_module \
+        --with-http_ssl_module \
+        --with-http_auth_request_module \
+        --with-stream \
+        ${SANITIZE:+--with-cc-opt="-fsanitize=address -fno-omit-frame-pointer -g" --with-ld-opt="-fsanitize=address"} \
+        --add-dynamic-module=/src/ngx-trace \
+    && make -j"$(nproc)" \
+    && make install \
+    && mkdir -p /usr/local/nginx/modules \
+    && cp objs/ngx_http_trace_module.so /usr/local/nginx/modules/
+
+ENV PATH="/usr/local/nginx/sbin:${PATH}"
+
+# Test harness: Test::Nginx drives a real nginx binary.
+ENV TEST_NGINX_BINARY=/usr/local/nginx/sbin/nginx
+# Every test server inherits a top-level `load_module` line so the dynamic .so
+# is always present. Test::Nginx maps each path in TEST_NGINX_LOAD_MODULES to a
+# `load_module <path>;` directive injected into the main (top-level) context
+# (Test::Nginx::Util: $LoadModules). This is the correct hook for dynamic
+# modules — TEST_NGINX_GLOBALS does NOT emit load_module.
+ENV TEST_NGINX_LOAD_MODULES=/usr/local/nginx/modules/ngx_http_trace_module.so
+
+WORKDIR /src/ngx-trace
+COPY t /src/ngx-trace/t
+COPY docker/loadcheck.conf /usr/local/nginx/conf/loadcheck.conf
+COPY docker/smoke.conf    /src/ngx-trace/docker/smoke.conf
+
+# Default: prove the module loads (nginx -t), then run the suite.
+CMD ["sh", "-c", "nginx -t -c /usr/local/nginx/conf/loadcheck.conf && prove -r t/"]
