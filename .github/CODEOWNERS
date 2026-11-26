@@ -4,11 +4,11 @@
 
 * @nginx/demos
 nginx/advanced-healthchecks @aknot242 @fabriziofiorucci
-nginx/ai-proxy @pleshakov
+nginx/ai-proxy @nginx/demos
 nginx/api-gateway @alessfg
 nginx/api-steering @aknot242 @fabriziofiorucci
 nginx/docker-image-builder @aknot242 @fabriziofiorucci
-nginx/get-nginx-org @alessfg
+nginx/get-nginx-org @alessfg @fabriziofiorucci @nshadrin
 nginx/multicloud-gateway @aknot242 @fabriziofiorucci
 nginx/ngx_http_greylist_module @aknot242 @fabriziofiorucci
 nginx/ngx_stream_dns_module @aknot242 @fabriziofiorucci
