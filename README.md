@@ -30,6 +30,7 @@ Each demo might have unique deployment requirements. Please refer to each indivi
 |[NGINX Docker image builder](nginx/docker-image-builder/)|Tool to build several Docker images for NGINX Plus, F5 WAF for NGINX, NGINX Agent|@fabriziofiorucci|
 |[NGINX get.nginx.org installer](nginx/get-nginx-org/)|One-line installer for NGINX Open Source from the nginx.org packages, with pinned signing keys|@alessfg|
 |[NGINX greylist module](nginx/ngx_http_greylist_module/)|A native C dynamic module for open-source NGINX that provides pattern-based rate limiting with automatic client greylisting|@fabriziofiorucci|
+|[NGINX MCP Gateway Mission Control](nginx/mcp-gateway-mission-control/)|NGINX as a gateway for Model Context Protocol (MCP) traffic, with tool-level RBAC, per-tool rate limiting and MCP-aware observability using njs, OpenTelemetry, Prometheus and Grafana|@mkingst|
 |[NGINX multicloud gateway](nginx/multicloud-gateway/)|NGINX setup for URI-based kubernetes traffic routing|@fabriziofiorucci|
 |[NGINX RADIUS parser module](nginx/ngx_stream_radius_module/)|A native C NGINX module that parses RADIUS authentication and accounting packets in the stream context, populating NGINX variables with all AVP (Attribute-Value Pair) fields defined in RFC 2865 and RFC 2866, including full Vendor-Specific Attribute (VSA) support with loadable vendor dictionaries|@fabriziofiorucci|
 |[NGINX service discovery](nginx/nginx-service-discovery/)|Consul-compatible service discovery implemented with NGINX + njs|@fabriziofiorucci|

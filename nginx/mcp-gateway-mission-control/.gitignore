@@ -1,0 +1,2 @@
+# Local settings, including the editor password (see .env.example)
+.env

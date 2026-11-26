@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: nginx-mcp
+    type: file
+    options:
+      path: /var/lib/grafana/http
