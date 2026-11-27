@@ -7,7 +7,7 @@ This folder has what every test runs against. These aren't tests:
 - [`cluster.yaml`](cluster.yaml) is a fake cluster. The tests run without Kubernetes, but the policies look things up as they run (a namespace's tier, a team's allowed models), and `cluster.yaml` provides those objects: the namespaces and their labels, the model allowlist, the shared InferencePools.
 - [`crds/`](crds/) has the upstream definitions of the Gateway API, Inference Extension and NGINX Gateway Fabric kinds, so the CLI understands them offline.
 
-`make test` runs every test in the lab with the Kyverno CLI from `KYVERNO_CLI_IMAGE` in [`lab/versions.env`](../../lab/versions.env) (v1.19.2), without a cluster. `make test S=<scenario>` runs one scenario's.
+`make test` runs every test in the lab with the Kyverno CLI pinned in [`lab/Dockerfile`](../../lab/Dockerfile) (v1.19.2), without a cluster. `make test S=<scenario>` runs one scenario's.
 
 ## Writing more tests
 
