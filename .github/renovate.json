@@ -12,23 +12,57 @@
   "schedule": [
     "* 0-7 * * 1"
   ],
+  "separateMinorPatch": true,
   "packageRules": [
     {
-      "description": "One PR per demo, so each PR only needs review from that demo's code owners",
+      "description": "Split each dependency's PRs by demo, so a PR only needs review from that demo's code owners",
       "matchFileNames": [
-        "**"
+        "!.github/**"
       ],
-      "groupName": "{{{replace '^([^/]+/[^/]+).*$' '$1' packageFileDir}}} dependencies",
-      "groupSlug": "{{{replace '/' '-' (replace '^([^/]+/[^/]+).*$' '$1' packageFileDir)}}}"
+      "additionalBranchPrefix": "{{{replace '/' '-' (replace '^([^/]+/[^/]+).*$' '$1' packageFileDir)}}}-",
+      "commitMessageSuffix": "in {{{replace '^([^/]+/[^/]+).*$' '$1' packageFileDir}}}"
     },
     {
-      "description": "One PR for the repo's own GitHub Actions workflows",
-      "matchManagers": [
-        "github-actions"
+      "description": "Semver ecosystems: minor and patch updates are both non-breaking, so they share a PR. Everything else (Docker tags, Python) gets separate patch and minor PRs.",
+      "matchDatasources": [
+        "crate",
+        "github-tags",
+        "go",
+        "helm",
+        "npm",
+        "terraform-module",
+        "terraform-provider"
       ],
-      "groupName": "GitHub Actions"
+      "separateMinorPatch": false
     },
     {
+      "description": "Automerge patch updates, and digest updates that don't follow a moving tag such as latest",
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "matchCurrentValue": "!/^latest$/",
+      "automerge": true
+    },
+    {
+      "description": "Automerge minor updates of semver dependencies from 1.0 on (before 1.0, a minor update can break)",
+      "matchDatasources": [
+        "crate",
+        "github-tags",
+        "go",
+        "helm",
+        "npm",
+        "terraform-module",
+        "terraform-provider"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": "!/^v?0\\./",
+      "automerge": true
+    },
+    {
+      "description": "Don't pin GitHub Actions to commit digests",
       "matchManagers": [
         "github-actions"
       ],
@@ -36,17 +70,6 @@
         "digest"
       ],
       "enabled": false
-    },
-    {
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "matchCurrentVersion": "!/^0/",
-      "automerge": true
     }
   ]
 }
