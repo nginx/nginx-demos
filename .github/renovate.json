@@ -4,9 +4,6 @@
     "config:recommended"
   ],
   "commitMessageLowerCase": "never",
-  "enabledManagers": [
-    "github-actions"
-  ],
   "labels": [
     "dependencies"
   ],
@@ -15,29 +12,41 @@
   "schedule": [
     "* 0-7 * * 1"
   ],
-  "github-actions": {
-    "packageRules": [
-      {
-        "groupName": "GitHub Actions",
-        "matchPackageNames": [
-          "actions/**",
-          "github/**"
-        ]
-      },
-      {
-        "enabled": false,
-        "matchUpdateTypes": [
-          "digest"
-        ]
-      },
-      {
-        "automerge": true,
-        "matchUpdateTypes": [
-          "minor",
-          "patch"
-        ],
-        "matchCurrentVersion": "!/^0/"
-      }
-    ]
-  }
+  "packageRules": [
+    {
+      "description": "One PR per demo, so each PR only needs review from that demo's code owners",
+      "matchFileNames": [
+        "**"
+      ],
+      "groupName": "{{{replace '^([^/]+/[^/]+).*$' '$1' packageFileDir}}} dependencies",
+      "groupSlug": "{{{replace '/' '-' (replace '^([^/]+/[^/]+).*$' '$1' packageFileDir)}}}"
+    },
+    {
+      "description": "One PR for the repo's own GitHub Actions workflows",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "enabled": false
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    }
+  ]
 }
