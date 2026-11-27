@@ -47,7 +47,7 @@ Three folders, each with one job. `setup/` builds the cluster's starting state (
 lab/                 the container every make target runs in
   Dockerfile         the image: every tool, plus its own Docker daemon
   toolbox            the launcher
-  versions.env       every pinned version
+  versions.env       the pinned versions (the lab's images are pinned in its Dockerfile)
 setup/               builds the starting state; run by make up and make reset only
   cluster/           kind, the images, NGINX Gateway Fabric, Kyverno, Policy Reporter
   workloads/         namespaces, RBAC, models, gateway, routes
@@ -121,7 +121,7 @@ The recordings are the talk as presented, so they show the names and layout of t
 
 ## Versions
 
-Pinned in [`lab/versions.env`](lab/versions.env): NGINX Gateway Fabric 2.8.0, Gateway API v1.6.3, Inference Extension v1.6.2, llm-d-router v0.11.0 (endpoint picker), llm-d-inference-sim v1.0.0, Kyverno v1.19.2, Policy Reporter chart 3.11.2, and kind v0.33.0 (Kubernetes v1.37.0). The lab's tools (kubectl, helm, yq, the Kyverno CLI) are pinned there too.
+Pinned in [`lab/versions.env`](lab/versions.env): NGINX Gateway Fabric 2.8.0, Gateway API v1.6.3, Inference Extension v1.6.2, llm-d-router v0.11.0 (endpoint picker), llm-d-inference-sim v1.0.0, Kyverno v1.19.2, Policy Reporter chart 3.11.2, and kind v0.33.0 (Kubernetes v1.37.0). Helm is pinned there too; the lab's kubectl, yq, Kyverno CLI and Docker-in-Docker images are pinned by digest in [`lab/Dockerfile`](lab/Dockerfile).
 
 ## Using the policies elsewhere
 

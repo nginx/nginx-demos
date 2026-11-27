@@ -5,14 +5,15 @@ ARG WAF_IP_INTELLIGENCE=false
 ARG NGINX_AGENT=false
 ARG NGINX_AGENT_VERSION=2
 
+# yq, for the startup script: pinned, and the right binary for the build's architecture.
+COPY --from=mikefarah/yq:4.54.1@sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e /usr/bin/yq /usr/bin/yq
+
 # Initial packages setup
 RUN apt-get -y update \
   && apt-get -y install apt-transport-https lsb-release ca-certificates wget gnupg2 curl debian-archive-keyring iproute2 \
   && mkdir -p /deployment /etc/ssl/nginx \
   && addgroup --system --gid 20983 nginx \
-  && adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos "nginx user" --shell /bin/false --uid 20983 nginx \
-  && wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq \
-  && chmod +x /usr/bin/yq
+  && adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos "nginx user" --shell /bin/false --uid 20983 nginx 
 
 # Use certificate and key from secret
 RUN --mount=type=secret,id=nginx-crt,dst=/etc/ssl/nginx/nginx-repo.crt,mode=0644 \

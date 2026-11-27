@@ -4,6 +4,9 @@ FROM ubuntu:24.04@sha256:66460d557b25769b102175144d538d88219c077c678a49af4afca6f
 #RUN groupadd --gid 990 nms && \
 #    useradd --uid 990 --gid 990 --no-create-home -d /nonexistent --shell /bin/false nms
 
+# yq, for the startup script: pinned, and the right binary for the build's architecture.
+COPY --from=mikefarah/yq:4.54.1@sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e /usr/bin/yq /usr/bin/yq
+
 # Initial setup
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
@@ -30,10 +33,6 @@ RUN --mount=type=secret,id=nginx-crt,dst=/etc/ssl/nginx/nginx-repo.crt,mode=0644
     # Optional WAF Policy Compiler
     && LATEST_COMPILER=$(apt-cache search nms-nap-compiler | sort | tail -n1 | awk '{print $1}') \
     && apt-get -y install "$LATEST_COMPILER" \
-    # Install yq
-    && wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(dpkg --print-architecture) \
-        -O /usr/bin/yq \
-    && chmod +x /usr/bin/yq \
     && chmod +x /etc/nms/scripts/*.sh \
     # Allow binding privileged ports (80/443) without root.
     # Remove this block if your app uses only ports >= 1024.

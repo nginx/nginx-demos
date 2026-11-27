@@ -1,4 +1,4 @@
-FROM nginx:1.26-alpine AS build
+FROM nginx:1.26-alpine@sha256:1eadbb07820339e8bbfed18c771691970baee292ec4ab2558f1453d26153e22d AS build
 
 RUN apk add --no-cache \
         gcc musl-dev make pcre-dev openssl-dev zlib-dev linux-headers
@@ -21,7 +21,7 @@ RUN NGINX_VER=$(nginx -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+') && \
     cp objs/ngx_http_consul_service_discovery_module.so /etc/nginx/modules/
 
 # ── Final image ──────────────────────────────────────────────────────────
-FROM nginx:1.26-alpine
+FROM nginx:1.26-alpine@sha256:1eadbb07820339e8bbfed18c771691970baee292ec4ab2558f1453d26153e22d
 
 COPY --from=build /etc/nginx/modules/ngx_http_consul_service_discovery_module.so \
                   /etc/nginx/modules/

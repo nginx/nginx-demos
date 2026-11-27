@@ -4,17 +4,14 @@
 #
 # Docker-in-Docker rather than mounting the host's Docker socket: some Docker Desktop setups
 # (Enhanced Container Isolation) refuse socket mounts and host networking, but allow a privileged
-# dind. Every version comes from versions.env (passed as build args by lab/toolbox).
-ARG DIND_IMAGE
-ARG KUBECTL_IMAGE
-ARG YQ_IMAGE
-ARG KYVERNO_CLI_IMAGE
+# dind. The images are pinned here by digest; kind and helm come from versions.env (passed as
+# build args by lab/toolbox).
+FROM registry.k8s.io/kubectl:v1.37.1@sha256:b7cab618e281b1ee7484e7b706a96e2135fbb6e072c2a573a7dab4e87d7f2385 AS kubectl
+FROM mikefarah/yq:4.54.1@sha256:4b3d9475d65571d28cbb19544d3820ec2945e4c8b2f18279394282b8dc3a592e AS yq
+# The Kyverno CLI for `make test`. Keep its version in step with the Kyverno chart in versions.env.
+FROM reg.kyverno.io/kyverno/kyverno-cli:v1.19.2@sha256:322ec5044d600930cb3af0e56dc33154a2d1d1fba58f4cadad3f47be7e78b11c AS kyverno-cli
 
-FROM ${KUBECTL_IMAGE} AS kubectl
-FROM ${YQ_IMAGE} AS yq
-FROM ${KYVERNO_CLI_IMAGE} AS kyverno-cli
-
-FROM ${DIND_IMAGE}
+FROM docker:29.8.1-dind@sha256:3f3c01aaaebf7cce837356b688b7c059a4749f10bd7660dec7c58fc454a283f0
 ARG KIND_VERSION
 ARG HELM_VERSION
 ARG TARGETARCH
