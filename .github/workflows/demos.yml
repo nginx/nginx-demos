@@ -1,0 +1,82 @@
+---
+# Smoke-tests the demos a pull request changes. A demo opts in with an executable tests/ci.sh,
+# which builds its images, starts them and checks they answer (.github/scripts/smoke-lib.sh has
+# the helpers). Run one locally with: .github/scripts/smoke.sh <demo-dir>
+name: Demos
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    name: Find changed demos
+    runs-on: ubuntu-24.04
+    outputs:
+      demos: ${{ steps.demos.outputs.demos }}
+    steps:
+      - name: Check out the codebase
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: List demos with a smoke test that this change touches
+        id: demos
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          # Demo directories come from the pull request, so only plain path names are accepted.
+          all=$(git ls-files '*/tests/ci.sh' | sed 's|/tests/ci.sh$||' | grep -E '^[A-Za-z0-9._/-]+$' | sort)
+          # Every demo on manual runs, on pushes without a usable base, and when the shared test
+          # scripts or this workflow change.
+          if [ "$EVENT" = workflow_dispatch ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null \
+            || git diff --name-only "$BASE" HEAD | grep -qE '^\.github/(scripts/smoke|workflows/demos\.yml)'; then
+            demos=$all
+          else
+            changed=$(git diff --name-only "$BASE" HEAD)
+            demos=$(for d in $all; do grep -q "^$d/" <<<"$changed" && echo "$d"; done || true)
+          fi
+          echo "demos=$(jq -cnR '[inputs | select(length > 0)]' <<<"$demos")" >> "$GITHUB_OUTPUT"
+          echo "Demos to test:"; echo "${demos:-(none)}"
+
+  smoke:
+    name: ${{ matrix.demo }}
+    needs: changes
+    if: needs.changes.outputs.demos != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        demo: ${{ fromJSON(needs.changes.outputs.demos) }}
+    steps:
+      - name: Check out the codebase
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run the smoke test
+        env:
+          DEMO: ${{ matrix.demo }}
+        run: .github/scripts/smoke.sh "$DEMO"
+
+  # One stable check name to require in branch rules, whichever demos ran.
+  result:
+    name: Demos smoke tests
+    if: always()
+    needs: [changes, smoke]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail if any smoke test failed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SMOKE: ${{ needs.smoke.result }}
+        run: |
+          echo "changes: $CHANGES, smoke: $SMOKE"
+          [ "$CHANGES" = success ] && { [ "$SMOKE" = success ] || [ "$SMOKE" = skipped ]; }

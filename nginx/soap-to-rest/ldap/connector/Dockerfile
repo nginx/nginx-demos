@@ -1,16 +1,17 @@
-From ubuntu:22.04
+FROM ubuntu:22.04@sha256:b000e69a50ff940390233025e7a337fb8469b509e2334fa4d018ac30f3e18cdb
 
 ARG LDAP_SERVER
+ENV LDAP_SERVER=$LDAP_SERVER
 
 RUN apt-get update \
-#	&& apt-get -y install python3 python3-venv python3-pip python3-openssl libsasl2-dev libldap2-dev libssl-dev \
-	&& apt-get -y install python3 python3-pip python3-openssl libsasl2-dev libldap2-dev libssl-dev \
-        && mkdir /deployment
+	&& apt-get -y install --no-install-recommends python3 python3-venv \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& python3 -m venv /deployment/venv
 
-COPY ./ldap/connector/ldap-connector.py /deployment
-COPY ./ldap/connector/requirements.txt /deployment
+COPY ./ldap/connector/requirements.txt /deployment/
+RUN /deployment/venv/bin/pip install --no-cache-dir --require-hashes -r /deployment/requirements.txt
 
-RUN pip install --no-cache -r /deployment/requirements.txt
+COPY ./ldap/connector/ldap-connector.py /deployment/
 
 WORKDIR /deployment
-CMD /deployment/ldap-connector.py $LDAP_SERVER
+CMD /deployment/venv/bin/python3 /deployment/ldap-connector.py $LDAP_SERVER

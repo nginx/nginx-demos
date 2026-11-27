@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: coffee-v1
-        image: nginxdemos/nginx-hello:plain-text
+        image: nginxdemos/nginx-hello:plain-text@sha256:7444c8fe498146490bf8acaea9a0313610cfff2ab4acf16cd6555cfdf7558876
         ports:
         - containerPort: 8080
 ---
@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: coffee-v2
-        image: nginxdemos/nginx-hello:plain-text
+        image: nginxdemos/nginx-hello:plain-text@sha256:7444c8fe498146490bf8acaea9a0313610cfff2ab4acf16cd6555cfdf7558876
         ports:
         - containerPort: 8080
 ---

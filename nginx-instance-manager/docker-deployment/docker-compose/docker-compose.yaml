@@ -1,6 +1,6 @@
 services:
     clickhouse:
-     image: clickhouse/clickhouse-server:23-alpine
+     image: clickhouse/clickhouse-server:23-alpine@sha256:377a5a2dbd3c7396524b3b3bc051a521cadb54b086079e8e175cf644d3b0821a
      ports:
      - "9000:9000"
      environment:

@@ -1,15 +1,9 @@
-FROM ubuntu:latest@sha256:b59d21599a2b151e23eea5f6602f4af4d7d31c4e236d22bf0b62b86d2e386b8f
-RUN apt-get update
+FROM python:3.12-slim@sha256:e55523f127124e5edc03ba201e3dbbc85172a2ec40d8651ac752364b23dfd733
 
-RUN apt-get install -y -q build-essential python3-pip python3-dev python3-simplejson git
-RUN pip3 install --upgrade pip
-RUN pip3 install --upgrade virtualenv
-
-RUN mkdir deployment
-RUN virtualenv /deployment/env/
-RUN /deployment/env/bin/python -m pip install --upgrade pip
-RUN /deployment/env/bin/pip3 install flask
 WORKDIR /deployment
+COPY requirements.txt .
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 COPY app.py .
 
-CMD env/bin/python3 app.py
+EXPOSE 5000
+CMD ["python", "app.py"]

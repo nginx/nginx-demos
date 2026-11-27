@@ -22,7 +22,8 @@ NGINX_SRC="${1:-/usr/src/nginx}"
 NGINX_BIN="${2:-$(command -v nginx 2>/dev/null || echo "${NGINX_SRC}/objs/nginx")}"
 MODULE_SO="${NGINX_SRC}/objs/ngx_http_consul_service_discovery_module.so"
 TMPDIR=$(mktemp -d)
-trap 'kill $NGINX_PID 2>/dev/null; rm -rf "$TMPDIR"' EXIT
+NGINX_PID=""
+trap '[ -z "$NGINX_PID" ] || kill "$NGINX_PID" 2>/dev/null; rm -rf "$TMPDIR"' EXIT
 
 # ── Write a test nginx.conf ────────────────────────────────────────────────
 CONF="${TMPDIR}/nginx.conf"
@@ -74,8 +75,8 @@ http {
 EOF
 
 PASS=0; FAIL=0
-ok()   { echo "  PASS: $*"; ((PASS++)); }
-fail() { echo "  FAIL: $*"; ((FAIL++)); }
+ok()   { echo "  PASS: $*"; (( PASS++ )) || true; }
+fail() { echo "  FAIL: $*"; (( FAIL++ )) || true; }
 
 echo "=== ngx_http_consul_service_discovery smoke tests ==="
 echo ""

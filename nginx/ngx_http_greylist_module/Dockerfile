@@ -6,14 +6,18 @@
 #   runtime  — minimal nginx image with the compiled .so
 #
 # Usage:
-#   docker build --build-arg NGINX_VER=1.27.4 -t nginx-greylist .
+#   docker build -t nginx-greylist .
 #   docker run -p 80:80 nginx-greylist
+#
+# NGINX_VER is the NGINX source the module is built against. It must match the
+# runtime image below (--with-compat modules only load into the same version),
+# so change both together.
 # =============================================================================
 
 ARG NGINX_VER=1.27.4
 
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
-FROM debian:bookworm-slim AS builder
+FROM debian:bookworm-slim@sha256:e67eeead736ff7bbe258ef088bff683635c561b1fcfefad0806c1df4ab49ce0e AS builder
 
 ARG NGINX_VER
 
@@ -44,7 +48,7 @@ RUN cd nginx-${NGINX_VER} \
     && cp objs/ngx_http_greylist_module.so /build/
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM nginx:${NGINX_VER}
+FROM nginx:1.27.4@sha256:09369da6b10306312cd908661320086bf87fbae1b6b0c49a1f50ba531fef2eab
 
 COPY --from=builder /build/ngx_http_greylist_module.so \
                     /usr/lib/nginx/modules/ngx_http_greylist_module.so
